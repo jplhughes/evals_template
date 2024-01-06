@@ -13,13 +13,13 @@ from anthropic import AsyncAnthropic
 from anthropic.types.completion import Completion as AnthropicCompletion
 from termcolor import cprint
 
-from core.llm_api.base_llm import (
+from evals.llm_api.base_llm import (
     PRINT_COLORS,
     LLMResponse,
     ModelAPIProtocol,
     messages_to_single_prompt,
 )
-from core.llm_api.openai_llm import OAIChatPrompt
+from evals.llm_api.openai_llm import OAIChatPrompt
 
 ANTHROPIC_MODELS = {"claude-instant-1", "claude-2.0", "claude-v1.3", "claude-2.1"}
 LOGGER = logging.getLogger(__name__)

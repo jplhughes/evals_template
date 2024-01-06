@@ -16,7 +16,7 @@ from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 from termcolor import cprint
 
-from core.llm_api.base_llm import (
+from evals.llm_api.base_llm import (
     PRINT_COLORS,
     LLMResponse,
     ModelAPIProtocol,

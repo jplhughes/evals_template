@@ -1,0 +1,28 @@
+hydra:
+  run:
+    dir: ${exp_dir}/logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: ${exp_dir}/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+  job_logging:
+    root:
+      level: INFO
+
+defaults:
+  - prompt: zero-shot
+  - language_model: gpt-4-turbo
+
+# Common Params
+exp_dir: ???
+swap: false
+seed: 0
+limit: 50
+logging: INFO
+
+# API
+organization: ACEDEMICNYUPEREZ_ORG
+anthropic_tag: ANTHROPIC_API_KEY
+openai_tag: OPENAI_API_KEY
+anthropic_num_threads: 20
+openai_fraction_rate_limit: 0.9
+print_prompt_and_response: false

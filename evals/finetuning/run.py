@@ -10,8 +10,8 @@ from openai.error import APIConnectionError, RateLimitError
 from pydantic import BaseModel
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from core.finetuning.syncer import WandbSyncer
-from core.utils import load_jsonl, setup_environment
+from evals.finetuning.syncer import WandbSyncer
+from evals.utils import load_jsonl, setup_environment
 
 logger = logging.getLogger(__name__)
 

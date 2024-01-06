@@ -4,7 +4,7 @@ from typing import Optional
 
 import requests
 
-from core.utils import setup_environment
+from evals.utils import setup_environment
 
 
 def can_claude_api_take_n_more_concurrents(n: int) -> bool:

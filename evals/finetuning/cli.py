@@ -6,7 +6,7 @@ import openai
 import pandas as pd
 import typer
 
-from core.utils import save_jsonl, setup_environment
+from evals.utils import save_jsonl, setup_environment
 
 typer.main.get_command_name = lambda name: name
 app = typer.Typer()

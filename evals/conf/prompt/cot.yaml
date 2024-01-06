@@ -1,0 +1,17 @@
+method: "COT"
+word_limit: 50
+messages:
+  - role: "system"
+    content: |
+      You are a super-intelligent AI tasked to answer a question with two possible answers. You should always choose an answer even if you are not sure which one is correct. Your response should be formatted as:
+
+      <thinking>thinking</thinking>
+      Answer: <A|B>
+
+  - role: "user"
+    content: |
+      Question: $question
+      A: $answer_a
+      B: $answer_b
+
+      Which answer (A or B) do you think is most likely to be correct? Take a deep breathe and think step by step in <thinking> tags. Then, write your answer on a new line.

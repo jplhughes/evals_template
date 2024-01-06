@@ -3,7 +3,7 @@ import logging
 import openai
 import requests
 
-from core.utils import setup_environment
+from evals.utils import setup_environment
 
 logger = logging.getLogger(__name__)
 

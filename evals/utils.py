@@ -1,25 +1,14 @@
 import json
 import logging
 import os
-from pathlib import Path
-from typing import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
 import openai
-import pandas as pd
-import typer
 import yaml
 from tenacity import retry, retry_if_result, stop_after_attempt
 
-from core.rollouts.utils import TranscriptConfig
-
-typer.main.get_command_name = lambda name: name
-
 LOGGER = logging.getLogger(__name__)
-SEPARATOR = "---------------------------------------------\n\n"
-SEPARATOR_CONVERSATIONAL_TURNS = "=============================================\n\n"
-PROMPT_HISTORY = "prompt_history"
 
 LOGGING_LEVELS = {
     "critical": logging.CRITICAL,
@@ -32,17 +21,17 @@ LOGGING_LEVELS = {
 
 def setup_environment(
     anthropic_tag: str = "ANTHROPIC_API_KEY",
-    logger_level: str = "info",
+    logging_level: str = "info",
     openai_tag: str = "OPENAI_API_KEY",
 ):
-    setup_logging(logger_level)
+    setup_logging(logging_level)
     secrets = load_secrets("SECRETS")
     openai.api_key = secrets[openai_tag]
     os.environ["ANTHROPIC_API_KEY"] = secrets[anthropic_tag]
 
 
-def setup_logging(level_str):
-    level = LOGGING_LEVELS.get(level_str.lower(), logging.INFO)  # default to INFO if level_str is not found
+def setup_logging(logging_level):
+    level = LOGGING_LEVELS.get(logging_level.lower(), logging.INFO)
     logging.basicConfig(
         level=level,
         format="%(asctime)s [%(levelname)s] (%(name)s) %(message)s",
@@ -87,18 +76,6 @@ def save_jsonl(file_path, data):
         for line in data:
             json.dump(line, f)
             f.write("\n")
-
-
-def create_filtered_csv(csv_path: Path, output_path: Path, filter_func: Callable[[TranscriptConfig], bool]):
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    df = pd.read_csv(csv_path)
-
-    def filter_transcript(row: pd.Series):
-        transcript = TranscriptConfig(**json.loads(row["transcript"]))
-        return filter_func(transcript)
-
-    filtered_df = df[df.apply(filter_transcript, axis=1)]
-    filtered_df.to_csv(output_path)
 
 
 @retry(

@@ -1,0 +1,13 @@
+method: "0-shot"
+word_limit: null
+messages:
+  - role: "system"
+    content: |
+      You are a super-intelligent AI tasked to answer a question with two possible answers. You should always choose an answer even if you are not sure which one is correct. Your response should be formatted as "Answer: <A|B>" and don't include any other text.
+  - role: "user"
+    content: |
+      Question: $question
+      A: $answer_a
+      B: $answer_b
+
+      Which answer (A or B) do you think is most likely to be correct?
