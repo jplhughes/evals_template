@@ -2,7 +2,6 @@ import asyncio
 import logging
 from pathlib import Path
 import traceback
-from copy import deepcopy
 from string import Template
 
 import hydra
@@ -44,15 +43,18 @@ async def get_completion(
 
 
 def process_prompt(prompt: DictConfig, swap: bool, row: pd.Series) -> list[dict[str, str]]:
-    messages = deepcopy(prompt.messages)
     answer_a = row["correct_answer"] if not swap else row["negative_answer"]
     answer_b = row["negative_answer"] if not swap else row["correct_answer"]
 
-    for message in messages:
-        message["content"] = Template(message["content"]).safe_substitute(
-            question=row["question"], answer_a=answer_a, answer_b=answer_b
+    messages = []
+    for message in prompt.messages:
+        t = Template(message["content"])
+        messages.append(
+            {
+                "role": message["role"],
+                "content": t.safe_substitute(question=row["question"], answer_a=answer_a, answer_b=answer_b),
+            }
         )
-
     return messages
 
 

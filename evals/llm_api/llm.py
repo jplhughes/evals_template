@@ -24,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 class ModelAPI:
     anthropic_num_threads: int = 5  # current redwood limit is 5
     openai_fraction_rate_limit: float = attrs.field(default=0.99, validator=attrs.validators.lt(1))
-    organization: str = "NYU_ORG"
+    organization: str = "ACEDEMICNYUPEREZ_ORG"
     print_prompt_and_response: bool = False
 
     _openai_base: OpenAIBaseModel = attrs.field(init=False)
@@ -39,17 +39,21 @@ class ModelAPI:
     def __attrs_post_init__(self):
         secrets = load_secrets("SECRETS")
         if self.organization is None:
-            self.organization = "NYU_ORG"
+            self.organization = "ACEDEMICNYUPEREZ_ORG"
         self._openai_base = OpenAIBaseModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             print_prompt_and_response=self.print_prompt_and_response,
         )
-        self._openai_base_arg = OpenAIBaseModel(
-            frac_rate_limit=self.openai_fraction_rate_limit,
-            organization=secrets["ARG_ORG"],
-            print_prompt_and_response=self.print_prompt_and_response,
-        )
+        # use NYU ARG org for gpt-4-base
+        if "NYUARG_ORG" in secrets:
+            self._openai_base_arg = OpenAIBaseModel(
+                frac_rate_limit=self.openai_fraction_rate_limit,
+                organization=secrets["NYUARG_ORG"],
+                print_prompt_and_response=self.print_prompt_and_response,
+            )
+        else:
+            self._openai_base_arg = self._openai_base
         self._openai_chat = OpenAIChatModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
@@ -129,15 +133,14 @@ class ModelAPI:
         assert "max_tokens_to_sample" not in kwargs, "max_tokens_to_sample should be passed in as max_tokens."
 
         if isinstance(model_ids, str):
-            model_ids = [model_ids]
-            # # trick to double rate limit for most recent model only
-            # if model_ids.endswith("-0613"):
-            #     model_ids = [model_ids, model_ids.replace("-0613", "")]
-            #     print(f"doubling rate limit for most recent model {model_ids}")
-            # elif model_ids.endswith("-0914"):
-            #     model_ids = [model_ids, model_ids.replace("-0914", "")]
-            # else:
-            #     model_ids = [model_ids]
+            # trick to double rate limit for most recent model only
+            if model_ids.endswith("-0613"):
+                model_ids = [model_ids, model_ids.replace("-0613", "")]
+                print(f"doubling rate limit for most recent model {model_ids}")
+            elif model_ids.endswith("-0914"):
+                model_ids = [model_ids, model_ids.replace("-0914", "")]
+            else:
+                model_ids = [model_ids]
 
         def model_id_to_class(model_id: str) -> ModelAPIProtocol:
             if model_id in ["gpt-4-base", "gpt-3.5-turbo-instruct"]:

@@ -14,8 +14,7 @@ class PromptConfig(BaseModel):
     partials: Dict[str, str] = {}
     word_limit: Optional[int] = 100
     messages: List[Dict[str, str]] = []
-    messages1: List[Dict[str, str]] = []
-    messages2: List[Dict[str, str]] = []
+    messages_followup: List[Dict[str, str]] = []
     vars: Dict[str, str] = {}
 
 
@@ -96,24 +95,6 @@ def messages_to_single_prompt(messages) -> str:
     if tag != AI_PROMPT:
         prompt += f"{AI_PROMPT}"
     return prompt.strip()
-
-
-def convert_to_prob(log_prob: dict, tokens: list) -> tuple[float, float, float]:
-    logit1 = log_prob.get(tokens[0], None)
-    logit2 = log_prob.get(tokens[1], None)
-
-    if logit1 is None:
-        rating = -100
-        LOGGER.warning(f"Missing token0 {tokens[0]} in log_prob, setting rating to -100.0")
-    else:
-        rating = logit1
-
-    if logit1 is None:
-        logit1 = -100
-    if logit2 is None:
-        logit2 = -100
-
-    return rating, logit1, logit2
 
 
 def add_assistant_message(messages: list[dict], assistant_message: str):

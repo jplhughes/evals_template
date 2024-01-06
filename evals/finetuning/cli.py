@@ -13,21 +13,21 @@ app = typer.Typer()
 
 
 @app.command()
-def list_finetunes(limit: int = 100, organization: str = "NYU_ORG") -> None:
+def list_finetunes(limit: int = 100, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     finetunes = openai.FineTuningJob.list(limit=limit)
     print(finetunes)
 
 
 @app.command()
-def delete_file(file_id: str, organization: str = "NYU_ORG") -> None:
+def delete_file(file_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     openai.File.delete(file_id)
     print(f"Deleted file {file_id}")
 
 
 @app.command()
-def delete_all_files(organization: str = "NYU_ORG") -> None:
+def delete_all_files(organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     files = openai.File.list().data  # type: ignore
     for file in files:
@@ -40,26 +40,26 @@ def delete_all_files(organization: str = "NYU_ORG") -> None:
 
 
 @app.command()
-def list_all_files(organization: str = "NYU_ORG") -> None:
+def list_all_files(organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     files = openai.File.list().data  # type: ignore
     print(files)
 
 
 @app.command()
-def cancel_job(job_id: str, organization: str = "NYU_ORG") -> None:
+def cancel_job(job_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     print(openai.FineTuningJob.cancel(job_id))
 
 
 @app.command()
-def retrieve_job(job_id: str, organization: str = "NYU_ORG") -> None:
+def retrieve_job(job_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     print(openai.FineTuningJob.retrieve(job_id))
 
 
 @app.command()
-def download_result_file(result_file_id: str, organization: str = "NYU_ORG") -> None:
+def download_result_file(result_file_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     file = openai.File.retrieve(result_file_id)
     downloaded: bytes = openai.File.download(result_file_id)
@@ -71,7 +71,7 @@ def download_result_file(result_file_id: str, organization: str = "NYU_ORG") -> 
 
 
 @app.command()
-def download_training_file(training_file_id: str, organization: str = "NYU_ORG") -> None:
+def download_training_file(training_file_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     openai.File.retrieve(training_file_id)
     downloaded: bytes = openai.File.download(training_file_id)
