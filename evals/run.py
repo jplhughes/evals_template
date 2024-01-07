@@ -1,16 +1,16 @@
 import asyncio
 import logging
-from pathlib import Path
 import traceback
+from pathlib import Path
 from string import Template
 
 import hydra
 import pandas as pd
 from omegaconf import DictConfig
 
-from evals.llm_api.base import ModelAPI
-from evals.utils import setup_environment, async_function_with_retry
+from evals.apis.inference.base import ModelAPI
 from evals.load.mmlu import load_mmlu
+from evals.utils import async_function_with_retry, setup_environment
 
 LOGGER = logging.getLogger(__name__)
 

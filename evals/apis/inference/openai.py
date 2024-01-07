@@ -14,14 +14,14 @@ from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 from termcolor import cprint
 
-from evals.data_models.language_model import LLMResponse
-from evals.llm_api.utils import (
+from evals.apis.inference.utils import (
     PRINT_COLORS,
     ModelAPIProtocol,
     add_response_to_prompt_file,
     create_prompt_history_file,
     messages_to_single_prompt,
 )
+from evals.data_models.language_model import LLMResponse
 
 OAIChatPrompt = list[dict[str, str]]
 OAIBasePrompt = Union[str, list[str]]

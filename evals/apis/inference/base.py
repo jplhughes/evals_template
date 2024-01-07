@@ -9,14 +9,14 @@ import attrs
 import matplotlib.pyplot as plt
 import numpy as np
 
-from evals.llm_api.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
-from evals.llm_api.openai import (
+from evals.apis.inference.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
+from evals.apis.inference.openai import (
     BASE_MODELS,
     GPT_CHAT_MODELS,
     OpenAIBaseModel,
     OpenAIChatModel,
 )
-from evals.llm_api.utils import LLMResponse, ModelAPIProtocol
+from evals.apis.inference.utils import LLMResponse, ModelAPIProtocol
 from evals.utils import load_secrets
 
 LOGGER = logging.getLogger(__name__)
