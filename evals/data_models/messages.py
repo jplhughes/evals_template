@@ -72,7 +72,7 @@ class Prompt(BaseModel):
             )
         if self.is_none_in_messages():
             raise ValueError(f"OpenAI chat prompts cannot have a None role. Got {self.messages}")
-        return [msg.dict() for msg in self.messages]
+        return [msg.model_dump() for msg in self.messages]
 
     def anthropic_format(self) -> str:
         if self.is_none_in_messages():
