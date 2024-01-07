@@ -9,19 +9,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from evals.apis.inference.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
-from evals.apis.inference.openai import (
-    BASE_MODELS,
-    GPT_CHAT_MODELS,
-    OpenAIBaseModel,
-    OpenAIChatModel,
-)
-from evals.apis.inference.utils import LLMResponse, ModelAPIProtocol
+from evals.apis.inference.openai.utils import BASE_MODELS, GPT_CHAT_MODELS
+from evals.apis.inference.openai.completion import OpenAIBaseModel
+from evals.apis.inference.openai.chat import OpenAIChatModel
+from evals.apis.inference.utils import InferenceAPIModel, LLMResponse
 from evals.utils import load_secrets
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ModelAPI:
+class InferenceAPI:
     def __init__(
         self,
         anthropic_num_threads=5,
@@ -79,35 +76,6 @@ class ModelAPI:
         self.model_timings = {}
         self.model_wait_times = {}
 
-    async def call_single(
-        self,
-        model_ids: Union[str, list[str]],
-        prompt: Union[list[dict[str, str]], str],
-        max_tokens: int,
-        print_prompt_and_response: bool = False,
-        n: int = 1,
-        max_attempts_per_api_call: int = 10,
-        num_candidates_per_completion: int = 1,
-        is_valid: Callable[[str], bool] = lambda _: True,
-        insufficient_valids_behaviour: Literal["error", "continue", "pad_invalids"] = "error",
-        **kwargs,
-    ) -> str:
-        assert n == 1, f"Expected a single response. {n} responses were requested."
-        responses = await self(
-            model_ids,
-            prompt,
-            max_tokens,
-            print_prompt_and_response,
-            n,
-            max_attempts_per_api_call,
-            num_candidates_per_completion,
-            is_valid,
-            insufficient_valids_behaviour,
-            **kwargs,
-        )
-        assert len(responses) == 1, "Expected a single response."
-        return responses[0].completion
-
     async def __call__(
         self,
         model_ids: Union[str, list[str]],
@@ -156,7 +124,7 @@ class ModelAPI:
             else:
                 model_ids = [model_ids]
 
-        def model_id_to_class(model_id: str) -> ModelAPIProtocol:
+        def model_id_to_class(model_id: str) -> InferenceAPIModel:
             if model_id in ["gpt-4-base", "gpt-3.5-turbo-instruct"]:
                 return self._openai_base_arg  # NYU ARG is only org with access to this model
             elif model_id in BASE_MODELS:
@@ -260,7 +228,7 @@ class ModelAPI:
 
 
 async def demo():
-    model_api = ModelAPI(anthropic_num_threads=2, openai_fraction_rate_limit=1)
+    model_api = InferenceAPI(anthropic_num_threads=2, openai_fraction_rate_limit=1)
     anthropic_requests = [
         model_api(
             "claude-instant-1",

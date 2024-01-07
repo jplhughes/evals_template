@@ -10,10 +10,10 @@ from anthropic import AsyncAnthropic
 from anthropic.types.completion import Completion as AnthropicCompletion
 from termcolor import cprint
 
-from evals.apis.inference.openai import OAIChatPrompt
+from evals.apis.inference.openai.utils import OAIChatPrompt
 from evals.apis.inference.utils import (
     PRINT_COLORS,
-    ModelAPIProtocol,
+    InferenceAPIModel,
     add_response_to_prompt_file,
     create_prompt_history_file,
     messages_to_single_prompt,
@@ -24,18 +24,7 @@ ANTHROPIC_MODELS = {"claude-instant-1", "claude-2.0", "claude-v1.3", "claude-2.1
 LOGGER = logging.getLogger(__name__)
 
 
-def count_tokens(prompt: str) -> int:
-    return len(prompt.split())
-
-
-def price_per_token(model_id: str) -> tuple[float, float]:
-    """
-    Returns the (input token, output token) price for the given model id.
-    """
-    return 0, 0
-
-
-class AnthropicChatModel(ModelAPIProtocol):
+class AnthropicChatModel(InferenceAPIModel):
     def __init__(self, num_threads, print_prompt_and_response=False, prompt_history_dir=Path("./prompt_history")):
         self.num_threads = num_threads
         self.print_prompt_and_response = print_prompt_and_response
@@ -77,12 +66,6 @@ class AnthropicChatModel(ModelAPIProtocol):
         if response is None:
             raise RuntimeError(f"Failed to get a response from the API after {max_attempts} attempts.")
 
-        num_context_tokens, num_completion_tokens = await asyncio.gather(
-            self.client.count_tokens(prompt),
-            self.client.count_tokens(response.completion),
-        )
-        context_token_cost, completion_token_cost = price_per_token(model_id)
-        cost = num_context_tokens * context_token_cost + num_completion_tokens * completion_token_cost
         duration = time.time() - start
         LOGGER.debug(f"Completed call to {model_id} in {duration}s")
 
@@ -92,7 +75,7 @@ class AnthropicChatModel(ModelAPIProtocol):
             stop_reason=response.stop_reason,
             duration=duration,
             api_duration=api_duration,
-            cost=cost,
+            cost=0,
         )
 
         add_response_to_prompt_file(prompt_file, [llm_response])

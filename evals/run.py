@@ -8,7 +8,7 @@ import hydra
 import pandas as pd
 from omegaconf import DictConfig
 
-from evals.apis.inference.base import ModelAPI
+from evals.apis.inference.api import InferenceAPI
 from evals.load.mmlu import load_mmlu
 from evals.utils import async_function_with_retry, setup_environment
 
@@ -16,10 +16,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 async def get_completion(
-    index: int, prompt: list[dict[str, str]], language_model: DictConfig, api_handler: ModelAPI
+    index: int, prompt: list[dict[str, str]], language_model: DictConfig, inference_api: InferenceAPI
 ) -> dict[str, str]:
     try:
-        answer = await api_handler.call_single(
+        responses = await inference_api(
             model_ids=language_model.model,
             prompt=prompt,
             temperature=language_model.temperature,
@@ -29,9 +29,10 @@ async def get_completion(
             insufficient_valids_behaviour=language_model.insufficient_valids_behaviour,
             is_valid=lambda x: "Answer:" in x,
         )
+        answer = responses[0].completion
         complete = True
-        api_handler.log_model_timings()
-        LOGGER.info(f"Completed row {index}\tRunning cost: ${api_handler.running_cost:.3f}")
+        inference_api.log_model_timings()
+        LOGGER.info(f"Completed row {index}\tRunning cost: ${inference_api.running_cost:.3f}")
     except RuntimeError as e:
         complete = False
         answer = traceback.format_exc()
@@ -59,7 +60,7 @@ def process_prompt(prompt: DictConfig, swap: bool, row: pd.Series) -> list[dict[
     return messages
 
 
-async def run_dataset(cfg: DictConfig, api_handler: ModelAPI, filename: Path) -> bool:
+async def run_dataset(cfg: DictConfig, inference_api: InferenceAPI, filename: Path) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
     if cfg.limit is not None:
@@ -73,7 +74,7 @@ async def run_dataset(cfg: DictConfig, api_handler: ModelAPI, filename: Path) ->
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     prompts = [process_prompt(cfg.prompt, cfg.swap, row) for _, row in df.iterrows()]
-    tasks = [get_completion(i, prompt, cfg.language_model, api_handler) for i, prompt in enumerate(prompts)]
+    tasks = [get_completion(i, prompt, cfg.language_model, inference_api) for i, prompt in enumerate(prompts)]
     results = await asyncio.gather(*tasks)
 
     # update dataframe with results
@@ -108,7 +109,7 @@ async def async_main(cfg: DictConfig):
 
     # setup api handler
     setup_environment(anthropic_tag=cfg.anthropic_tag, logging_level=cfg.logging)
-    api_handler = ModelAPI(
+    inference_api = InferenceAPI(
         anthropic_num_threads=cfg.anthropic_num_threads,
         openai_fraction_rate_limit=cfg.openai_fraction_rate_limit,
         organization=cfg.organization,
@@ -128,7 +129,7 @@ async def async_main(cfg: DictConfig):
     complete = await async_function_with_retry(
         run_dataset,
         cfg,
-        api_handler,
+        inference_api,
         filename,
     )
     return complete

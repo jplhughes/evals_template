@@ -1,17 +1,18 @@
+import json
 import logging
-from typing import Protocol
 from datetime import datetime
 from pathlib import Path
-import json
+from typing import Protocol
 
 from anthropic import AI_PROMPT, HUMAN_PROMPT
+
 from evals.data_models.language_model import LLMResponse
 
 PRINT_COLORS = {"user": "cyan", "system": "magenta", "assistant": "light_green"}
 LOGGER = logging.getLogger(__name__)
 
 
-class ModelAPIProtocol(Protocol):
+class InferenceAPIModel(Protocol):
     async def __call__(
         self,
         model_ids: list[str],
