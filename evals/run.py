@@ -8,7 +8,7 @@ import hydra
 import pandas as pd
 from omegaconf import DictConfig
 
-from evals.llm_api.llm import ModelAPI
+from evals.llm_api.base import ModelAPI
 from evals.utils import setup_environment, async_function_with_retry
 from evals.load.mmlu import load_mmlu
 

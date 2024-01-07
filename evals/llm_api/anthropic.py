@@ -1,8 +1,8 @@
 import asyncio
 import logging
-from pathlib import Path
 import re
 import time
+from pathlib import Path
 from traceback import format_exc
 from typing import Optional, Union
 
@@ -11,15 +11,15 @@ from anthropic import AsyncAnthropic
 from anthropic.types.completion import Completion as AnthropicCompletion
 from termcolor import cprint
 
-from evals.llm_api.base_llm import (
+from evals.data_models.language_model import LLMResponse
+from evals.llm_api.openai import OAIChatPrompt
+from evals.llm_api.utils import (
     PRINT_COLORS,
-    LLMResponse,
     ModelAPIProtocol,
-    messages_to_single_prompt,
-    create_prompt_history_file,
     add_response_to_prompt_file,
+    create_prompt_history_file,
+    messages_to_single_prompt,
 )
-from evals.llm_api.openai_llm import OAIChatPrompt
 
 ANTHROPIC_MODELS = {"claude-instant-1", "claude-2.0", "claude-v1.3", "claude-2.1"}
 LOGGER = logging.getLogger(__name__)

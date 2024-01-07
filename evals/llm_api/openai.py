@@ -2,9 +2,9 @@ import asyncio
 import logging
 import time
 from itertools import cycle
+from pathlib import Path
 from traceback import format_exc
 from typing import Optional, Union
-from pathlib import Path
 
 import attrs
 import openai
@@ -14,13 +14,13 @@ from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 from termcolor import cprint
 
-from evals.llm_api.base_llm import (
+from evals.data_models.language_model import LLMResponse
+from evals.llm_api.utils import (
     PRINT_COLORS,
-    LLMResponse,
     ModelAPIProtocol,
-    messages_to_single_prompt,
-    create_prompt_history_file,
     add_response_to_prompt_file,
+    create_prompt_history_file,
+    messages_to_single_prompt,
 )
 
 OAIChatPrompt = list[dict[str, str]]

@@ -4,19 +4,19 @@ from collections import defaultdict
 from itertools import chain
 from pathlib import Path
 from typing import Callable, Literal, Union
+
+import attrs
 import matplotlib.pyplot as plt
 import numpy as np
 
-import attrs
-
-from evals.llm_api.anthropic_llm import ANTHROPIC_MODELS, AnthropicChatModel
-from evals.llm_api.base_llm import LLMResponse, ModelAPIProtocol
-from evals.llm_api.openai_llm import (
+from evals.llm_api.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
+from evals.llm_api.openai import (
     BASE_MODELS,
     GPT_CHAT_MODELS,
     OpenAIBaseModel,
     OpenAIChatModel,
 )
+from evals.llm_api.utils import LLMResponse, ModelAPIProtocol
 from evals.utils import load_secrets
 
 LOGGER = logging.getLogger(__name__)
