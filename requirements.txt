@@ -1,0 +1,21 @@
+anthropic>=0.3.1
+datasets
+fire
+hydra-core
+matplotlib
+openai==0.28.0
+pandas
+pre-commit
+pydantic<2.0.0 # above 2 breaks anthropic
+scikit-learn
+scipy
+seaborn
+tenacity
+termcolor
+tiktoken
+tqdm
+wandb
+black
+isort
+ruff
+shed
