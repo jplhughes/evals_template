@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 import openai
-import typer
+import fire
 from openai.error import APIConnectionError, RateLimitError
 from pydantic import BaseModel
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from evals.finetuning.syncer import WandbSyncer
+from evals.apis.finetuning.syncer import WandbSyncer
 from evals.utils import load_jsonl, setup_environment
 
 logger = logging.getLogger(__name__)
@@ -203,4 +203,4 @@ def main(
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    fire.Fire(main)
