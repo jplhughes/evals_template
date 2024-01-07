@@ -69,7 +69,9 @@ class OpenAICompletionModel(OpenAIModel):
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
         prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
         api_start = time.time()
-        api_response: OpenAICompletion = await openai.Completion.acreate(prompt=prompt, model=model_id, organization=self.organization, **params)  # type: ignore
+        api_response: OpenAICompletion = await openai.Completion.acreate(
+            prompt=prompt, model=model_id, organization=self.organization, **params
+        )
         api_duration = time.time() - api_start
         duration = time.time() - start_time
         context_token_cost, completion_token_cost = price_per_token(model_id)
