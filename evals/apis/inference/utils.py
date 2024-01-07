@@ -4,7 +4,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
-from anthropic import AI_PROMPT, HUMAN_PROMPT
 
 from evals.data_models.language_model import LLMResponse
 
@@ -22,30 +21,6 @@ class InferenceAPIModel(Protocol):
         **kwargs,
     ) -> list[LLMResponse]:
         raise NotImplementedError
-
-
-def messages_to_single_prompt(messages) -> str:
-    if len(messages) >= 2 and messages[0]["role"] == "system" and messages[1]["role"] == "user":
-        combined_content = messages[0]["content"] + " " + messages[1]["content"]
-        messages = [{"role": "user", "content": combined_content}] + messages[2:]
-    prompt = ""
-    for message in messages:
-        role = message["role"]
-        content = message["content"]
-        tag = AI_PROMPT if role == "assistant" else HUMAN_PROMPT
-        prompt += f"{tag} {content}"
-    if tag != AI_PROMPT:
-        prompt += f"{AI_PROMPT}"
-    return prompt.strip()
-
-
-def add_assistant_message(messages: list[dict], assistant_message: str):
-    last_role = messages[-1]["role"]
-    if last_role == "assistant":
-        messages[-1]["content"] += assistant_message
-    else:
-        messages.append({"role": "assistant", "content": assistant_message})
-    return messages
 
 
 def create_prompt_history_file(prompt: dict, model: str, prompt_history_dir: Path):

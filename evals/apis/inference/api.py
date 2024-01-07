@@ -13,6 +13,7 @@ from evals.apis.inference.openai.chat import OpenAIChatModel
 from evals.apis.inference.openai.completion import OpenAICompletionModel
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
 from evals.apis.inference.utils import InferenceAPIModel, LLMResponse
+from evals.data_models.messages import Prompt
 from evals.utils import load_secrets
 
 LOGGER = logging.getLogger(__name__)
@@ -40,20 +41,20 @@ class InferenceAPI:
         if self.organization is None:
             self.organization = "ACEDEMICNYUPEREZ_ORG"
 
-        self._openai_base = OpenAICompletionModel(
+        self._openai_completion = OpenAICompletionModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             prompt_history_dir=self.prompt_history_dir,
         )
 
         if "NYUARG_ORG" in secrets:
-            self._openai_base_arg = OpenAICompletionModel(
+            self._openai_gpt4base = OpenAICompletionModel(
                 frac_rate_limit=self.openai_fraction_rate_limit,
                 organization=secrets["NYUARG_ORG"],
                 prompt_history_dir=self.prompt_history_dir,
             )
         else:
-            self._openai_base_arg = self._openai_base
+            self._openai_gpt4base = self._openai_completion
 
         self._openai_chat = OpenAIChatModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
@@ -73,7 +74,7 @@ class InferenceAPI:
     async def __call__(
         self,
         model_ids: Union[str, list[str]],
-        prompt: Union[list[dict[str, str]], str],
+        prompt: Prompt,
         max_tokens: int,
         print_prompt_and_response: bool = False,
         n: int = 1,
@@ -119,10 +120,10 @@ class InferenceAPI:
                 model_ids = [model_ids]
 
         def model_id_to_class(model_id: str) -> InferenceAPIModel:
-            if model_id in ["gpt-4-base", "gpt-3.5-turbo-instruct"]:
-                return self._openai_base_arg  # NYU ARG is only org with access to this model
+            if model_id == "gpt-4-base":
+                return self._openai_gpt4base  # NYU ARG is only org with access to this model
             elif model_id in COMPLETION_MODELS:
-                return self._openai_base
+                return self._openai_completion
             elif model_id in GPT_CHAT_MODELS or "ft:gpt-3.5-turbo" in model_id:
                 return self._openai_chat
             elif model_id in ANTHROPIC_MODELS:
@@ -133,6 +134,7 @@ class InferenceAPI:
         if len(set(str(type(x)) for x in model_classes)) != 1:
             raise ValueError("All model ids must be of the same type.")
 
+        # standardize max_tokens argument
         model_class = model_classes[0]
         if isinstance(model_class, AnthropicChatModel):
             max_tokens = max_tokens if max_tokens is not None else 2000
@@ -143,6 +145,7 @@ class InferenceAPI:
 
         num_candidates = num_candidates_per_completion * n
         if isinstance(model_class, AnthropicChatModel):
+            # Anthropic chat doesn't support generating multiple candidates at once, so we have to do it manually
             candidate_responses = list(
                 chain.from_iterable(
                     await asyncio.gather(
@@ -169,12 +172,14 @@ class InferenceAPI:
                 **kwargs,
             )
 
+        # filter out invalid responses
         valid_responses = [response for response in candidate_responses if is_valid(response.completion)]
         num_valid = len(valid_responses)
         success_rate = num_valid / num_candidates
         if success_rate < 1:
             LOGGER.info(f"`is_valid` success rate: {success_rate * 100:.2f}%")
 
+        # return the valid responses, or pad with invalid responses if there aren't enough
         if num_valid < n:
             match insufficient_valids_behaviour:
                 case "error":
@@ -193,6 +198,7 @@ class InferenceAPI:
         else:
             responses = valid_responses
 
+        # update running cost and model timings
         self.running_cost += sum(response.cost for response in valid_responses)
         for response in responses:
             self.model_timings.setdefault(response.model_id, []).append(response.api_duration)

@@ -4,19 +4,18 @@ import re
 import time
 from pathlib import Path
 from traceback import format_exc
-from typing import Optional, Union
+from typing import Optional
 
 from anthropic import AsyncAnthropic
 from anthropic.types.completion import Completion as AnthropicCompletion
 from termcolor import cprint
 
-from evals.apis.inference.openai.utils import OAIChatPrompt
+from evals.data_models.messages import Prompt
 from evals.apis.inference.utils import (
     PRINT_COLORS,
     InferenceAPIModel,
     add_response_to_prompt_file,
     create_prompt_history_file,
-    messages_to_single_prompt,
 )
 from evals.data_models.language_model import LLMResponse
 
@@ -34,7 +33,7 @@ class AnthropicChatModel(InferenceAPIModel):
     async def __call__(
         self,
         model_ids: list[str],
-        prompt: Union[str, OAIChatPrompt],
+        prompt: Prompt,
         print_prompt_and_response: bool,
         max_attempts: int,
         **kwargs,
@@ -42,10 +41,8 @@ class AnthropicChatModel(InferenceAPIModel):
         start = time.time()
         assert len(model_ids) == 1, "Anthropic implementation only supports one model at a time."
         model_id = model_ids[0]
-        if isinstance(prompt, list):
-            prompt = messages_to_single_prompt(prompt)
-
-        prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
+        prompt_string = prompt.anthropic_format()
+        prompt_file = create_prompt_history_file(prompt_string, model_id, self.prompt_history_dir)
         LOGGER.debug(f"Making {model_id} call")
         response: Optional[AnthropicCompletion] = None
         duration = None
@@ -53,7 +50,7 @@ class AnthropicChatModel(InferenceAPIModel):
             try:
                 async with self.available_requests:
                     api_start = time.time()
-                    response = await self.client.completions.create(prompt=prompt, model=model_id, **kwargs)
+                    response = await self.client.completions.create(prompt=prompt_string, model=model_id, **kwargs)
                     api_duration = time.time() - api_start
             except Exception as e:
                 error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()}"
@@ -79,9 +76,11 @@ class AnthropicChatModel(InferenceAPIModel):
 
         add_response_to_prompt_file(prompt_file, [llm_response])
         if print_prompt_and_response:
-            cprint(prompt, "yellow")
+            cprint(prompt_string, "yellow")
             pattern = r"(Human: |Assistant: )(.*?)(?=(Human: |Assistant: )|$)"
-            for match in re.finditer(pattern, prompt, re.S):  # re.S makes . match any character, including a newline
+            for match in re.finditer(
+                pattern, prompt_string, re.S
+            ):  # re.S makes . match any character, including a newline
                 role = match.group(1).removesuffix(": ").lower()
                 role = {"human": "user"}.get(role, role)
                 cprint(match.group(2), PRINT_COLORS[role])

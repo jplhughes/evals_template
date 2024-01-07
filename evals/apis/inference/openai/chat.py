@@ -14,13 +14,14 @@ from evals.apis.inference.utils import (
 )
 from evals.data_models.language_model import LLMResponse
 from evals.apis.inference.openai.base import OpenAIModel
-from evals.apis.inference.openai.utils import count_tokens, price_per_token, OAIChatPrompt, GPT_CHAT_MODELS
+from evals.apis.inference.openai.utils import count_tokens, price_per_token, GPT_CHAT_MODELS
+from evals.data_models.messages import Prompt
 
 LOGGER = logging.getLogger(__name__)
 
 
 class OpenAIChatModel(OpenAIModel):
-    def _process_prompt(self, prompt: OAIChatPrompt) -> OAIChatPrompt:
+    def _process_prompt(self, prompt: Prompt) -> Prompt:
         return prompt
 
     def _assert_valid_id(self, model_id: str):
@@ -46,15 +47,15 @@ class OpenAIChatModel(OpenAIModel):
         return response.headers
 
     @staticmethod
-    def _count_prompt_token_capacity(prompt: OAIChatPrompt, **kwargs) -> int:
+    def _count_prompt_token_capacity(prompt: Prompt, **kwargs) -> int:
         # The magic formula is: .25 * (total number of characters) + (number of messages) + (max_tokens, or 15 if not specified)
         BUFFER = 5  # A bit of buffer for some error margin
         MIN_NUM_TOKENS = 20
 
         num_tokens = 0
-        for message in prompt:
+        for message in prompt.messages:
             num_tokens += 1
-            num_tokens += len(message["content"]) / 4
+            num_tokens += len(message.content) / 4
 
         return max(
             MIN_NUM_TOKENS,
@@ -76,17 +77,17 @@ class OpenAIChatModel(OpenAIModel):
 
         return top_logprobs
 
-    async def _make_api_call(self, prompt: OAIChatPrompt, model_id, start_time, **params) -> list[LLMResponse]:
+    async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
 
         if "logprobs" in params:
             params["top_logprobs"] = params["logprobs"]
             params["logprobs"] = True
 
-        prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
+        prompt_file = create_prompt_history_file(prompt.openai_format(), model_id, self.prompt_history_dir)
         api_start = time.time()
         api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
-            messages=prompt, model=model_id, organization=self.organization, **params
+            messages=prompt.openai_format(), model=model_id, organization=self.organization, **params
         )
         api_duration = time.time() - api_start
         duration = time.time() - start_time
@@ -108,7 +109,7 @@ class OpenAIChatModel(OpenAIModel):
         return responses
 
     @staticmethod
-    def _print_prompt_and_response(prompts: OAIChatPrompt, responses: list[LLMResponse]):
+    def _print_prompt_and_response(prompts: Prompt, responses: list[LLMResponse]):
         for prompt in prompts:
             role, text = prompt["role"], prompt["content"]
             cprint(f"=={role.upper()}:", "white")

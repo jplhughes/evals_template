@@ -1,25 +1,17 @@
 from enum import Enum
+from typing import List, Optional
+
 from pydantic import BaseModel, validator
-from typing import Dict, List, Optional
 
 
-class PromptConfig(BaseModel):
-    method: str
-    word_limit: Optional[int] = 100
-    messages: List[Dict[str, str]] = []
-    messages_followup: List[Dict[str, str]] = []
-    extra: Dict[str, str] = {}
-
-
-class LanguageModelConfig(BaseModel):
+class LLMParams(BaseModel):
     model: str
     temperature: float = 0.2
     top_p: float = 1.0
     max_tokens: Optional[int] = None
-    max_words: int = 10000
-    min_words: int = 0
     num_candidates_per_completion: int = 1
-    timeout: int = 120
+    insufficient_valids_behaviour: str = "stop"
+    print_prompt_and_response: bool = False
 
 
 class StopReason(Enum):

@@ -6,76 +6,81 @@ from string import Template
 
 import hydra
 import pandas as pd
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from evals.apis.inference.api import InferenceAPI
+from evals.data_models.language_model import LLMParams
+from evals.data_models.messages import ChatMessage, PromptTemplate, Prompt
 from evals.load.mmlu import load_mmlu
 from evals.utils import async_function_with_retry, setup_environment
 
 LOGGER = logging.getLogger(__name__)
 
 
-async def get_completion(
-    index: int, prompt: list[dict[str, str]], language_model: DictConfig, inference_api: InferenceAPI
-) -> dict[str, str]:
-    try:
-        responses = await inference_api(
-            model_ids=language_model.model,
-            prompt=prompt,
-            temperature=language_model.temperature,
-            max_tokens=language_model.max_tokens,
-            top_p=language_model.top_p,
-            print_prompt_and_response=language_model.print_prompt_and_response,
-            num_candidates_per_completion=language_model.num_candidates_per_completion,
-            insufficient_valids_behaviour=language_model.insufficient_valids_behaviour,
-            is_valid=lambda x: "Answer:" in x,
-        )
-        answer = responses[0].completion
-        complete = True
-        inference_api.log_model_timings()
-        LOGGER.info(f"Completed row {index}\tRunning cost: ${inference_api.running_cost:.3f}")
-    except RuntimeError as e:
-        complete = False
-        answer = traceback.format_exc()
-        LOGGER.warning(f"Failed row {index} with error {e}")
-        LOGGER.warning(answer)
-    return {
-        "answer": answer,
-        "complete": complete,
-    }
+class DatasetRunner:
+    def __init__(self, prompt_template: PromptTemplate, llm_params: LLMParams, inference_api: InferenceAPI, swap: bool):
+        self.prompt_template = prompt_template
+        self.llm_params = llm_params
+        self.inference_api = inference_api
+        self.swap = swap
+
+    async def run(self, index: int, row: pd.Series) -> dict:
+        prompt = self.process_prompt(row)
+        try:
+            responses = await self.inference_api(
+                model_ids=self.llm_params.model,
+                prompt=prompt,
+                temperature=self.llm_params.temperature,
+                max_tokens=self.llm_params.max_tokens,
+                top_p=self.llm_params.top_p,
+                print_prompt_and_response=self.llm_params.print_prompt_and_response,
+                num_candidates_per_completion=self.llm_params.num_candidates_per_completion,
+                insufficient_valids_behaviour=self.llm_params.insufficient_valids_behaviour,
+                is_valid=lambda x: "Answer:" in x,
+            )
+            answer = responses[0].completion
+            complete = True
+            self.inference_api.log_model_timings()
+            LOGGER.info(f"Completed row {index}\tRunning cost: ${self.inference_api.running_cost:.3f}")
+        except RuntimeError as e:
+            complete = False
+            answer = traceback.format_exc()
+            LOGGER.warning(f"Failed row {index} with error {e}")
+            LOGGER.warning(answer)
+        return {
+            "answer": answer,
+            "complete": complete,
+        }
+
+    def process_prompt(self, row: pd.Series) -> Prompt:
+        answer_a = row["correct_answer"] if not self.swap else row["negative_answer"]
+        answer_b = row["negative_answer"] if not self.swap else row["correct_answer"]
+
+        messages = []
+        for message in self.prompt_template.messages:
+            t = Template(message.content)
+            content = t.safe_substitute(question=row["question"], answer_a=answer_a, answer_b=answer_b)
+            messages.append(ChatMessage(role=message.role, content=content))
+
+        return Prompt(messages=messages)
 
 
-def process_prompt(prompt: DictConfig, swap: bool, row: pd.Series) -> list[dict[str, str]]:
-    answer_a = row["correct_answer"] if not swap else row["negative_answer"]
-    answer_b = row["negative_answer"] if not swap else row["correct_answer"]
-
-    messages = []
-    for message in prompt.messages:
-        t = Template(message["content"])
-        messages.append(
-            {
-                "role": message["role"],
-                "content": t.safe_substitute(question=row["question"], answer_a=answer_a, answer_b=answer_b),
-            }
-        )
-    return messages
-
-
-async def run_dataset(cfg: DictConfig, inference_api: InferenceAPI, filename: Path) -> bool:
+async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int = None) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
-    if cfg.limit is not None:
-        full_df = full_df.head(cfg.limit)
+    if limit is not None:
+        full_df = full_df.head(limit)
     if "answer" not in full_df.columns:
         full_df["answer"] = ""
     if "complete" not in full_df.columns:
         full_df["complete"] = False
+    if "swap" not in full_df.columns:
+        full_df["swap"] = ""
     df = full_df[~(full_df["complete"])]
 
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
-    prompts = [process_prompt(cfg.prompt, cfg.swap, row) for _, row in df.iterrows()]
-    tasks = [get_completion(i, prompt, cfg.language_model, inference_api) for i, prompt in enumerate(prompts)]
+    tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
     results = await asyncio.gather(*tasks)
 
     # update dataframe with results
@@ -116,6 +121,10 @@ async def async_main(cfg: DictConfig):
         organization=cfg.organization,
         exp_dir=Path(cfg.exp_dir),
     )
+    # load configs
+    prompt_parts = PromptTemplate(**OmegaConf.to_container(cfg.prompt, resolve=True))
+    llm_params = LLMParams(**OmegaConf.to_container(cfg.language_model, resolve=True))
+    dataset_runner = DatasetRunner(prompt_parts, llm_params, inference_api, cfg.swap)
 
     # load dataset and save to file
     exp_dir = Path(cfg.exp_dir)
@@ -128,9 +137,9 @@ async def async_main(cfg: DictConfig):
     # run dataset (with retry)
     complete = await async_function_with_retry(
         run_dataset,
-        cfg,
-        inference_api,
         filename,
+        dataset_runner,
+        limit=cfg.limit,
     )
     return complete
 
