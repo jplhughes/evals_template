@@ -4,6 +4,8 @@ from collections import defaultdict
 from itertools import chain
 from pathlib import Path
 from typing import Callable, Literal, Union
+import matplotlib.pyplot as plt
+import numpy as np
 
 import attrs
 
@@ -26,6 +28,8 @@ class ModelAPI:
     openai_fraction_rate_limit: float = attrs.field(default=0.99, validator=attrs.validators.lt(1))
     organization: str = "ACEDEMICNYUPEREZ_ORG"
     print_prompt_and_response: bool = False
+    exp_dir: Path = Path("./exp")
+    prompt_history_dir: Path = attrs.field(init=False)
 
     _openai_base: OpenAIBaseModel = attrs.field(init=False)
     _openai_base_arg: OpenAIBaseModel = attrs.field(init=False)
@@ -40,10 +44,14 @@ class ModelAPI:
         secrets = load_secrets("SECRETS")
         if self.organization is None:
             self.organization = "ACEDEMICNYUPEREZ_ORG"
+        self.prompt_history_dir = self.exp_dir / "prompt_history"
+        self.prompt_history_dir.mkdir(parents=True, exist_ok=True)
+
         self._openai_base = OpenAIBaseModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             print_prompt_and_response=self.print_prompt_and_response,
+            prompt_history_dir=self.prompt_history_dir,
         )
         # use NYU ARG org for gpt-4-base
         if "NYUARG_ORG" in secrets:
@@ -51,6 +59,7 @@ class ModelAPI:
                 frac_rate_limit=self.openai_fraction_rate_limit,
                 organization=secrets["NYUARG_ORG"],
                 print_prompt_and_response=self.print_prompt_and_response,
+                prompt_history_dir=self.prompt_history_dir,
             )
         else:
             self._openai_base_arg = self._openai_base
@@ -58,12 +67,13 @@ class ModelAPI:
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             print_prompt_and_response=self.print_prompt_and_response,
+            prompt_history_dir=self.prompt_history_dir,
         )
         self._anthropic_chat = AnthropicChatModel(
             num_threads=self.anthropic_num_threads,
             print_prompt_and_response=self.print_prompt_and_response,
+            prompt_history_dir=self.prompt_history_dir,
         )
-        Path("./prompt_history").mkdir(exist_ok=True)
 
     async def call_single(
         self,
@@ -225,6 +235,24 @@ class ModelAPI:
 
     def reset_cost(self):
         self.running_cost = 0
+
+    def log_model_timings(self):
+        if len(self.model_timings) > 0:
+            plt.figure(figsize=(10, 6))
+            for model in self.model_timings:
+                timings = np.array(self.model_timings[model])
+                wait_times = np.array(self.model_wait_times[model])
+                LOGGER.info(
+                    f"{model}: response {timings.mean():.3f}, waiting {wait_times.mean():.3f} (max {wait_times.max():.3f}, min {wait_times.min():.3f})"
+                )
+                plt.plot(timings, label=f"{model} - Response Time", linestyle="-", linewidth=2)
+                plt.plot(wait_times, label=f"{model} - Waiting Time", linestyle="--", linewidth=2)
+            plt.legend()
+            plt.title("Model Performance: Response and Waiting Times")
+            plt.xlabel("Sample Number")
+            plt.ylabel("Time (seconds)")
+            plt.savefig(self.prompt_history_dir / "model_timings.png", bbox_inches="tight")
+            plt.close()
 
 
 async def demo():

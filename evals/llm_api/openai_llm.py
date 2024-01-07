@@ -1,12 +1,10 @@
 import asyncio
-import json
 import logging
-import os
 import time
-from datetime import datetime
 from itertools import cycle
 from traceback import format_exc
 from typing import Optional, Union
+from pathlib import Path
 
 import attrs
 import openai
@@ -21,6 +19,8 @@ from evals.llm_api.base_llm import (
     LLMResponse,
     ModelAPIProtocol,
     messages_to_single_prompt,
+    create_prompt_history_file,
+    add_response_to_prompt_file,
 )
 
 OAIChatPrompt = list[dict[str, str]]
@@ -103,11 +103,12 @@ class Resource:
         self.total += amount
 
 
-@attrs.define
+@attrs.define()
 class OpenAIModel(ModelAPIProtocol):
     frac_rate_limit: float
     organization: str
     print_prompt_and_response: bool = False
+    prompt_history_dir: Path = Path("./prompt_history")
     model_ids: set[str] = attrs.field(init=False, default=attrs.Factory(set))
 
     # rate limit
@@ -134,24 +135,6 @@ class OpenAIModel(ModelAPIProtocol):
     @staticmethod
     def _print_prompt_and_response(prompt, responses):
         raise NotImplementedError
-
-    @staticmethod
-    def _create_prompt_history_file(prompt):
-        filename = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}_prompt.txt"
-        with open(os.path.join("prompt_history", filename), "w") as f:
-            json_str = json.dumps(prompt, indent=4)
-            json_str = json_str.replace("\\n", "\n")
-            f.write(json_str)
-
-        return filename
-
-    @staticmethod
-    def _add_response_to_prompt_file(prompt_file, responses):
-        with open(os.path.join("prompt_history", prompt_file), "a") as f:
-            f.write("\n\n======RESPONSE======\n\n")
-            json_str = json.dumps([response.to_dict() for response in responses], indent=4)
-            json_str = json_str.replace("\\n", "\n")
-            f.write(json_str)
 
     async def add_model_id(self, model_id: str):
         self._assert_valid_id(model_id)
@@ -218,7 +201,6 @@ class OpenAIModel(ModelAPIProtocol):
         assert (
             max(self.token_capacity[model_id].refresh_rate for model_id in model_ids) >= token_count
         ), "Prompt is too long for any model to handle."
-        prompt_file = self._create_prompt_history_file(prompt)
         responses: Optional[list[LLMResponse]] = None
         for i in range(max_attempts):
             try:
@@ -233,7 +215,6 @@ class OpenAIModel(ModelAPIProtocol):
         if responses is None:
             raise RuntimeError(f"Failed to get a response from the API after {max_attempts} attempts.")
 
-        self._add_response_to_prompt_file(prompt_file, responses)
         if self.print_prompt_and_response or print_prompt_and_response:
             self._print_prompt_and_response(prompt, responses)
 
@@ -324,13 +305,14 @@ class OpenAIChatModel(OpenAIModel):
             params["top_logprobs"] = params["logprobs"]
             params["logprobs"] = True
 
+        prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
         api_start = time.time()
         api_response: OpenAICompletion = await openai.ChatCompletion.acreate(messages=prompt, model=model_id, organization=self.organization, **params)  # type: ignore
         api_duration = time.time() - api_start
         duration = time.time() - start_time
         context_token_cost, completion_token_cost = price_per_token(model_id)
         context_cost = api_response.usage.prompt_tokens * context_token_cost
-        return [
+        responses = [
             LLMResponse(
                 model_id=model_id,
                 completion=choice.message.content,
@@ -342,6 +324,8 @@ class OpenAIChatModel(OpenAIModel):
             )
             for choice in api_response.choices
         ]
+        add_response_to_prompt_file(prompt_file, responses)
+        return responses
 
     @staticmethod
     def _print_prompt_and_response(prompts: OAIChatPrompt, responses: list[LLMResponse]):
@@ -405,13 +389,14 @@ class OpenAIBaseModel(OpenAIModel):
 
     async def _make_api_call(self, prompt: OAIBasePrompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
+        prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
         api_start = time.time()
         api_response: OpenAICompletion = await openai.Completion.acreate(prompt=prompt, model=model_id, organization=self.organization, **params)  # type: ignore
         api_duration = time.time() - api_start
         duration = time.time() - start_time
         context_token_cost, completion_token_cost = price_per_token(model_id)
         context_cost = api_response.usage.prompt_tokens * context_token_cost
-        return [
+        responses = [
             LLMResponse(
                 model_id=model_id,
                 completion=choice.text,
@@ -423,6 +408,8 @@ class OpenAIBaseModel(OpenAIModel):
             )
             for choice in api_response.choices
         ]
+        add_response_to_prompt_file(prompt_file, responses)
+        return responses
 
     @staticmethod
     def _print_prompt_and_response(prompt: OAIBasePrompt, responses: list[LLMResponse]):

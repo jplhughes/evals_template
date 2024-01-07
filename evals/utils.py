@@ -2,8 +2,6 @@ import json
 import logging
 import os
 
-import matplotlib.pyplot as plt
-import numpy as np
 import openai
 import yaml
 from tenacity import retry, retry_if_result, stop_after_attempt
@@ -79,7 +77,7 @@ def save_jsonl(file_path, data):
 
 
 @retry(
-    stop=stop_after_attempt(16),
+    stop=stop_after_attempt(8),
     retry=retry_if_result(lambda result: result is not True),
 )
 def function_with_retry(function, *args, **kwargs):
@@ -87,27 +85,8 @@ def function_with_retry(function, *args, **kwargs):
 
 
 @retry(
-    stop=stop_after_attempt(16),
+    stop=stop_after_attempt(8),
     retry=retry_if_result(lambda result: result is not True),
 )
 async def async_function_with_retry(function, *args, **kwargs):
     return await function(*args, **kwargs)
-
-
-def log_model_timings(api_handler, save_location="./model_timings.png"):
-    if len(api_handler.model_timings) > 0:
-        plt.figure(figsize=(10, 6))
-        for model in api_handler.model_timings:
-            timings = np.array(api_handler.model_timings[model])
-            wait_times = np.array(api_handler.model_wait_times[model])
-            LOGGER.info(
-                f"{model}: response {timings.mean():.3f}, waiting {wait_times.mean():.3f} (max {wait_times.max():.3f}, min {wait_times.min():.3f})"
-            )
-            plt.plot(timings, label=f"{model} - Response Time", linestyle="-", linewidth=2)
-            plt.plot(wait_times, label=f"{model} - Waiting Time", linestyle="--", linewidth=2)
-        plt.legend()
-        plt.title("Model Performance: Response and Waiting Times")
-        plt.xlabel("Sample Number")
-        plt.ylabel("Time (seconds)")
-        plt.savefig(save_location, dpi=300)
-        plt.close()

@@ -1,10 +1,8 @@
 import asyncio
-import json
 import logging
-import os
+from pathlib import Path
 import re
 import time
-from datetime import datetime
 from traceback import format_exc
 from typing import Optional, Union
 
@@ -18,6 +16,8 @@ from evals.llm_api.base_llm import (
     LLMResponse,
     ModelAPIProtocol,
     messages_to_single_prompt,
+    create_prompt_history_file,
+    add_response_to_prompt_file,
 )
 from evals.llm_api.openai_llm import OAIChatPrompt
 
@@ -40,29 +40,12 @@ def price_per_token(model_id: str) -> tuple[float, float]:
 class AnthropicChatModel(ModelAPIProtocol):
     num_threads: int
     print_prompt_and_response: bool = False
+    prompt_history_dir: Path = Path("./prompt_history")
     client: AsyncAnthropic = attrs.field(init=False, default=attrs.Factory(AsyncAnthropic))
     available_requests: asyncio.BoundedSemaphore = attrs.field(init=False)
 
     def __attrs_post_init__(self):
         self.available_requests = asyncio.BoundedSemaphore(int(self.num_threads))
-
-    @staticmethod
-    def _create_prompt_history_file(prompt):
-        filename = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}_prompt.txt"
-        with open(os.path.join("prompt_history", filename), "w") as f:
-            json_str = json.dumps(prompt, indent=4)
-            json_str = json_str.replace("\\n", "\n")
-            f.write(json_str)
-
-        return filename
-
-    @staticmethod
-    def _add_response_to_prompt_file(prompt_file, response):
-        with open(os.path.join("prompt_history", prompt_file), "a") as f:
-            f.write("\n\n======RESPONSE======\n\n")
-            json_str = json.dumps(response.to_dict(), indent=4)
-            json_str = json_str.replace("\\n", "\n")
-            f.write(json_str)
 
     async def __call__(
         self,
@@ -78,7 +61,7 @@ class AnthropicChatModel(ModelAPIProtocol):
         if isinstance(prompt, list):
             prompt = messages_to_single_prompt(prompt)
 
-        prompt_file = self._create_prompt_history_file(prompt)
+        prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
         LOGGER.debug(f"Making {model_id} call")
         response: Optional[AnthropicCompletion] = None
         duration = None
@@ -116,7 +99,7 @@ class AnthropicChatModel(ModelAPIProtocol):
             cost=cost,
         )
 
-        self._add_response_to_prompt_file(prompt_file, llm_response)
+        add_response_to_prompt_file(prompt_file, [llm_response])
         if self.print_prompt_and_response or print_prompt_and_response:
             cprint(prompt, "yellow")
             pattern = r"(Human: |Assistant: )(.*?)(?=(Human: |Assistant: )|$)"

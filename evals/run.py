@@ -30,6 +30,7 @@ async def get_completion(
             is_valid=lambda x: "Answer:" in x,
         )
         complete = True
+        api_handler.log_model_timings()
         LOGGER.info(f"Completed row {index}\tRunning cost: ${api_handler.running_cost:.3f}")
     except RuntimeError as e:
         complete = False
@@ -91,7 +92,12 @@ async def run_dataset(cfg: DictConfig, api_handler: ModelAPI, filename: Path) ->
     full_df.to_csv(filename, index=False, encoding="utf-8")
 
     # return whether all rows are complete
-    return full_df["complete"].eq(True).all()
+    if full_df["complete"].eq(True).all():
+        LOGGER.info("All rows complete!")
+        return True
+    else:
+        LOGGER.info("Not all rows complete. Retrying...")
+        return False
 
 
 async def async_main(cfg: DictConfig):
@@ -107,9 +113,10 @@ async def async_main(cfg: DictConfig):
         openai_fraction_rate_limit=cfg.openai_fraction_rate_limit,
         organization=cfg.organization,
         print_prompt_and_response=cfg.print_prompt_and_response,
+        exp_dir=Path(cfg.exp_dir),
     )
 
-    # load dataset
+    # load dataset and save to file
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
     filename = exp_dir / f"data{cfg.seed}_swap{cfg.swap}.csv"
