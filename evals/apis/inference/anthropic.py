@@ -6,7 +6,6 @@ from pathlib import Path
 from traceback import format_exc
 from typing import Optional, Union
 
-import attrs
 from anthropic import AsyncAnthropic
 from anthropic.types.completion import Completion as AnthropicCompletion
 from termcolor import cprint
@@ -36,15 +35,12 @@ def price_per_token(model_id: str) -> tuple[float, float]:
     return 0, 0
 
 
-@attrs.define()
 class AnthropicChatModel(ModelAPIProtocol):
-    num_threads: int
-    print_prompt_and_response: bool = False
-    prompt_history_dir: Path = Path("./prompt_history")
-    client: AsyncAnthropic = attrs.field(init=False, default=attrs.Factory(AsyncAnthropic))
-    available_requests: asyncio.BoundedSemaphore = attrs.field(init=False)
-
-    def __attrs_post_init__(self):
+    def __init__(self, num_threads, print_prompt_and_response=False, prompt_history_dir=Path("./prompt_history")):
+        self.num_threads = num_threads
+        self.print_prompt_and_response = print_prompt_and_response
+        self.prompt_history_dir = prompt_history_dir
+        self.client = AsyncAnthropic()  # Assuming AsyncAnthropic has a default constructor
         self.available_requests = asyncio.BoundedSemaphore(int(self.num_threads))
 
     async def __call__(

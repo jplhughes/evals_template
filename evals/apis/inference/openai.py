@@ -6,7 +6,6 @@ from pathlib import Path
 from traceback import format_exc
 from typing import Optional, Union
 
-import attrs
 import openai
 import requests
 import tiktoken
@@ -62,20 +61,17 @@ def price_per_token(model_id: str) -> tuple[float, float]:
     return tuple(price / 1000 for price in prices)
 
 
-@attrs.define()
 class Resource:
     """
     A resource that is consumed over time and replenished at a constant rate.
     """
 
-    refresh_rate: float = attrs.field()  # How many units of the resource are replenished per minute
-    value: float = attrs.field(init=False)
-    total: float = 0
-    throughput: float = 0
-    last_update_time: float = attrs.field(init=False, factory=time.time)
-    start_time: float = attrs.field(init=False, factory=time.time)
-
-    def __attrs_post_init__(self):
+    def __init__(self, refresh_rate, total=0, throughput=0):
+        self.refresh_rate = refresh_rate
+        self.total = total
+        self.throughput = throughput
+        self.last_update_time = time.time()
+        self.start_time = time.time()
         self.value = self.refresh_rate
 
     def _replenish(self):
@@ -103,19 +99,24 @@ class Resource:
         self.total += amount
 
 
-@attrs.define()
 class OpenAIModel(ModelAPIProtocol):
-    frac_rate_limit: float
-    organization: str
-    print_prompt_and_response: bool = False
-    prompt_history_dir: Path = Path("./prompt_history")
-    model_ids: set[str] = attrs.field(init=False, default=attrs.Factory(set))
+    def __init__(
+        self,
+        frac_rate_limit,
+        organization,
+        print_prompt_and_response=False,
+        prompt_history_dir=Path("./prompt_history"),
+    ):
+        self.frac_rate_limit = frac_rate_limit
+        self.organization = organization
+        self.print_prompt_and_response = print_prompt_and_response
+        self.prompt_history_dir = prompt_history_dir
+        self.model_ids = set()
 
-    # rate limit
-    token_capacity: dict[str, Resource] = attrs.field(init=False, default=attrs.Factory(dict))
-    request_capacity: dict[str, Resource] = attrs.field(init=False, default=attrs.Factory(dict))
-    lock_add: asyncio.Lock = attrs.field(init=False, default=attrs.Factory(asyncio.Lock))
-    lock_consume: asyncio.Lock = attrs.field(init=False, default=attrs.Factory(asyncio.Lock))
+        self.token_capacity = dict()
+        self.request_capacity = dict()
+        self.lock_add = asyncio.Lock()
+        self.lock_consume = asyncio.Lock()
 
     @staticmethod
     def _assert_valid_id(model_id: str):

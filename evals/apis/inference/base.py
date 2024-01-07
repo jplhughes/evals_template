@@ -5,7 +5,6 @@ from itertools import chain
 from pathlib import Path
 from typing import Callable, Literal, Union
 
-import attrs
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -22,30 +21,29 @@ from evals.utils import load_secrets
 LOGGER = logging.getLogger(__name__)
 
 
-@attrs.define()
 class ModelAPI:
-    anthropic_num_threads: int = 5  # current redwood limit is 5
-    openai_fraction_rate_limit: float = attrs.field(default=0.99, validator=attrs.validators.lt(1))
-    organization: str = "ACEDEMICNYUPEREZ_ORG"
-    print_prompt_and_response: bool = False
-    exp_dir: Path = Path("./exp")
-    prompt_history_dir: Path = attrs.field(init=False)
+    def __init__(
+        self,
+        anthropic_num_threads=5,
+        openai_fraction_rate_limit=0.99,
+        organization="ACEDEMICNYUPEREZ_ORG",
+        print_prompt_and_response=False,
+        exp_dir=Path("./exp"),
+    ):
+        if openai_fraction_rate_limit >= 1:
+            raise ValueError("openai_fraction_rate_limit must be less than 1")
 
-    _openai_base: OpenAIBaseModel = attrs.field(init=False)
-    _openai_base_arg: OpenAIBaseModel = attrs.field(init=False)
-    _openai_chat: OpenAIChatModel = attrs.field(init=False)
-    _anthropic_chat: AnthropicChatModel = attrs.field(init=False)
+        self.anthropic_num_threads = anthropic_num_threads
+        self.openai_fraction_rate_limit = openai_fraction_rate_limit
+        self.organization = organization
+        self.print_prompt_and_response = print_prompt_and_response
+        self.exp_dir = exp_dir
+        self.prompt_history_dir = self.exp_dir / "prompt_history"
+        self.prompt_history_dir.mkdir(parents=True, exist_ok=True)
 
-    running_cost: float = attrs.field(init=False, default=0)
-    model_timings: dict[str, list[float]] = attrs.field(init=False, default={})
-    model_wait_times: dict[str, list[float]] = attrs.field(init=False, default={})
-
-    def __attrs_post_init__(self):
         secrets = load_secrets("SECRETS")
         if self.organization is None:
             self.organization = "ACEDEMICNYUPEREZ_ORG"
-        self.prompt_history_dir = self.exp_dir / "prompt_history"
-        self.prompt_history_dir.mkdir(parents=True, exist_ok=True)
 
         self._openai_base = OpenAIBaseModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
@@ -53,7 +51,7 @@ class ModelAPI:
             print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
-        # use NYU ARG org for gpt-4-base
+
         if "NYUARG_ORG" in secrets:
             self._openai_base_arg = OpenAIBaseModel(
                 frac_rate_limit=self.openai_fraction_rate_limit,
@@ -63,17 +61,23 @@ class ModelAPI:
             )
         else:
             self._openai_base_arg = self._openai_base
+
         self._openai_chat = OpenAIChatModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
+
         self._anthropic_chat = AnthropicChatModel(
             num_threads=self.anthropic_num_threads,
             print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
+
+        self.running_cost = 0
+        self.model_timings = {}
+        self.model_wait_times = {}
 
     async def call_single(
         self,
