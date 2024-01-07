@@ -5,10 +5,8 @@ import openai
 import requests
 from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
-from termcolor import cprint
 
 from evals.apis.inference.utils import (
-    PRINT_COLORS,
     add_response_to_prompt_file,
     create_prompt_history_file,
 )
@@ -21,9 +19,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class OpenAIChatModel(OpenAIModel):
-    def _process_prompt(self, prompt: Prompt) -> Prompt:
-        return prompt
-
     def _assert_valid_id(self, model_id: str):
         if "ft:" in model_id:
             model_id = model_id.split(":")[1]
@@ -107,15 +102,3 @@ class OpenAIChatModel(OpenAIModel):
         ]
         add_response_to_prompt_file(prompt_file, responses)
         return responses
-
-    @staticmethod
-    def _print_prompt_and_response(prompts: Prompt, responses: list[LLMResponse]):
-        for prompt in prompts:
-            role, text = prompt["role"], prompt["content"]
-            cprint(f"=={role.upper()}:", "white")
-            cprint(text, PRINT_COLORS[role])
-        for i, response in enumerate(responses):
-            if len(responses) > 1:
-                cprint(f"==RESPONSE {i + 1} ({response.model_id}):", "white")
-            cprint(response.completion, PRINT_COLORS["assistant"], attrs=["bold"])
-        print()

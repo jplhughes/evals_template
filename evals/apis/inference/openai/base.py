@@ -146,8 +146,6 @@ class OpenAIModel(InferenceAPIModel):
         async with self.lock_add:
             for model_id in model_ids:
                 await self.add_model_id(model_id)
-        prompt = self._process_prompt(prompt)
-
         token_count = self._count_prompt_token_capacity(prompt, **kwargs)
         assert (
             max(self.token_capacity[model_id].refresh_rate for model_id in model_ids) >= token_count
@@ -167,7 +165,7 @@ class OpenAIModel(InferenceAPIModel):
             raise RuntimeError(f"Failed to get a response from the API after {max_attempts} attempts.")
 
         if print_prompt_and_response:
-            self._print_prompt_and_response(prompt, responses)
+            prompt.pretty_print(responses)
 
         end = time.time()
         LOGGER.debug(f"Completed call to {model_id} in {end - start}s.")

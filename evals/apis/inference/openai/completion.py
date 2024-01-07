@@ -6,7 +6,6 @@ import requests
 import tiktoken
 from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
-from termcolor import cprint
 
 from evals.apis.inference.openai.base import OpenAIModel
 from evals.apis.inference.openai.utils import (
@@ -15,7 +14,6 @@ from evals.apis.inference.openai.utils import (
     price_per_token,
 )
 from evals.apis.inference.utils import (
-    PRINT_COLORS,
     add_response_to_prompt_file,
     create_prompt_history_file,
 )
@@ -26,9 +24,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class OpenAICompletionModel(OpenAIModel):
-    def _process_prompt(self, prompt: Prompt) -> str:
-        return str(prompt)
-
     def _assert_valid_id(self, model_id: str):
         assert model_id in COMPLETION_MODELS, f"Invalid model id: {model_id}"
 
@@ -47,21 +42,21 @@ class OpenAICompletionModel(OpenAIModel):
         return response.headers
 
     @staticmethod
-    def _count_prompt_token_capacity(prompt: str, **kwargs) -> int:
+    def _count_prompt_token_capacity(prompt: Prompt, **kwargs) -> int:
         max_tokens = kwargs.get("max_tokens", 15)
         n = kwargs.get("n", 1)
         completion_tokens = n * max_tokens
 
         tokenizer = tiktoken.get_encoding("cl100k_base")
-        prompt_tokens = len(tokenizer.encode(prompt))
+        prompt_tokens = len(tokenizer.encode(str(prompt)))
         return prompt_tokens + completion_tokens
 
-    async def _make_api_call(self, prompt: str, model_id, start_time, **params) -> list[LLMResponse]:
+    async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
-        prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
+        prompt_file = create_prompt_history_file(str(prompt), model_id, self.prompt_history_dir)
         api_start = time.time()
         api_response: OpenAICompletion = await openai.Completion.acreate(
-            prompt=prompt, model=model_id, organization=self.organization, **params
+            prompt=str(prompt), model=model_id, organization=self.organization, **params
         )
         api_duration = time.time() - api_start
         duration = time.time() - start_time
@@ -81,11 +76,3 @@ class OpenAICompletionModel(OpenAIModel):
         ]
         add_response_to_prompt_file(prompt_file, responses)
         return responses
-
-    @staticmethod
-    def _print_prompt_and_response(prompt: str, responses: list[LLMResponse]):
-        cprint(prompt, PRINT_COLORS["user"])
-        for j, response in enumerate(responses):
-            cprint(f"==RESPONSE {j + 1} ({response.model_id}):", "white")
-            cprint(response.completion, PRINT_COLORS["assistant"], attrs=["bold"])
-        print()

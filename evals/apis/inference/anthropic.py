@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 import time
 from pathlib import Path
 from traceback import format_exc
@@ -8,11 +7,9 @@ from typing import Optional
 
 from anthropic import AsyncAnthropic
 from anthropic.types.completion import Completion as AnthropicCompletion
-from termcolor import cprint
 
 from evals.data_models.messages import Prompt
 from evals.apis.inference.utils import (
-    PRINT_COLORS,
     InferenceAPIModel,
     add_response_to_prompt_file,
     create_prompt_history_file,
@@ -65,7 +62,7 @@ class AnthropicChatModel(InferenceAPIModel):
         duration = time.time() - start
         LOGGER.debug(f"Completed call to {model_id} in {duration}s")
 
-        llm_response = LLMResponse(
+        response = LLMResponse(
             model_id=model_id,
             completion=response.completion,
             stop_reason=response.stop_reason,
@@ -73,19 +70,10 @@ class AnthropicChatModel(InferenceAPIModel):
             api_duration=api_duration,
             cost=0,
         )
+        responses = [response]
 
-        add_response_to_prompt_file(prompt_file, [llm_response])
+        add_response_to_prompt_file(prompt_file, responses)
         if print_prompt_and_response:
-            cprint(prompt_string, "yellow")
-            pattern = r"(Human: |Assistant: )(.*?)(?=(Human: |Assistant: )|$)"
-            for match in re.finditer(
-                pattern, prompt_string, re.S
-            ):  # re.S makes . match any character, including a newline
-                role = match.group(1).removesuffix(": ").lower()
-                role = {"human": "user"}.get(role, role)
-                cprint(match.group(2), PRINT_COLORS[role])
-            cprint(f"Response ({llm_response.model_id}):", "white")
-            cprint(f"{llm_response.completion}", PRINT_COLORS["assistant"], attrs=["bold"])
-            print()
+            prompt.pretty_print(responses)
 
-        return [llm_response]
+        return responses

@@ -17,6 +17,7 @@ exp_dir: ???
 swap: false
 seed: 0
 limit: 50
+reset: false
 logging: INFO
 
 # API

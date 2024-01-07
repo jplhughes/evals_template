@@ -65,16 +65,16 @@ class DatasetRunner:
         return Prompt(messages=messages)
 
 
-async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int = None) -> bool:
+async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int = None, reset: bool = False) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
     if limit is not None:
         full_df = full_df.head(limit)
-    if "answer" not in full_df.columns:
+    if "answer" not in full_df.columns or reset:
         full_df["answer"] = ""
-    if "complete" not in full_df.columns:
+    if "complete" not in full_df.columns or reset:
         full_df["complete"] = False
-    if "swap" not in full_df.columns:
+    if "swap" not in full_df.columns or reset:
         full_df["swap"] = ""
     df = full_df[~(full_df["complete"])]
 
@@ -140,6 +140,7 @@ async def async_main(cfg: DictConfig):
         filename,
         dataset_runner,
         limit=cfg.limit,
+        reset=cfg.reset,
     )
     return complete
 
