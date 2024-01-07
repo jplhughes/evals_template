@@ -56,12 +56,10 @@ class OpenAIModel(InferenceAPIModel):
         self,
         frac_rate_limit,
         organization,
-        print_prompt_and_response=False,
         prompt_history_dir=Path("./prompt_history"),
     ):
         self.frac_rate_limit = frac_rate_limit
         self.organization = organization
-        self.print_prompt_and_response = print_prompt_and_response
         self.prompt_history_dir = prompt_history_dir
         self.model_ids = set()
 
@@ -168,7 +166,7 @@ class OpenAIModel(InferenceAPIModel):
         if responses is None:
             raise RuntimeError(f"Failed to get a response from the API after {max_attempts} attempts.")
 
-        if self.print_prompt_and_response or print_prompt_and_response:
+        if print_prompt_and_response:
             self._print_prompt_and_response(prompt, responses)
 
         end = time.time()

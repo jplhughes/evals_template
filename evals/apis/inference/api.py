@@ -24,7 +24,6 @@ class InferenceAPI:
         anthropic_num_threads=5,
         openai_fraction_rate_limit=0.99,
         organization="ACEDEMICNYUPEREZ_ORG",
-        print_prompt_and_response=False,
         exp_dir=Path("./exp"),
     ):
         if openai_fraction_rate_limit >= 1:
@@ -33,7 +32,6 @@ class InferenceAPI:
         self.anthropic_num_threads = anthropic_num_threads
         self.openai_fraction_rate_limit = openai_fraction_rate_limit
         self.organization = organization
-        self.print_prompt_and_response = print_prompt_and_response
         self.exp_dir = exp_dir
         self.prompt_history_dir = self.exp_dir / "prompt_history"
         self.prompt_history_dir.mkdir(parents=True, exist_ok=True)
@@ -45,7 +43,6 @@ class InferenceAPI:
         self._openai_base = OpenAICompletionModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
-            print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
 
@@ -53,7 +50,6 @@ class InferenceAPI:
             self._openai_base_arg = OpenAICompletionModel(
                 frac_rate_limit=self.openai_fraction_rate_limit,
                 organization=secrets["NYUARG_ORG"],
-                print_prompt_and_response=self.print_prompt_and_response,
                 prompt_history_dir=self.prompt_history_dir,
             )
         else:
@@ -62,13 +58,11 @@ class InferenceAPI:
         self._openai_chat = OpenAIChatModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
-            print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
 
         self._anthropic_chat = AnthropicChatModel(
             num_threads=self.anthropic_num_threads,
-            print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
 

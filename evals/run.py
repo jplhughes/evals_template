@@ -25,6 +25,7 @@ async def get_completion(
             temperature=language_model.temperature,
             max_tokens=language_model.max_tokens,
             top_p=language_model.top_p,
+            print_prompt_and_response=language_model.print_prompt_and_response,
             num_candidates_per_completion=language_model.num_candidates_per_completion,
             insufficient_valids_behaviour=language_model.insufficient_valids_behaviour,
             is_valid=lambda x: "Answer:" in x,
@@ -113,7 +114,6 @@ async def async_main(cfg: DictConfig):
         anthropic_num_threads=cfg.anthropic_num_threads,
         openai_fraction_rate_limit=cfg.openai_fraction_rate_limit,
         organization=cfg.organization,
-        print_prompt_and_response=cfg.print_prompt_and_response,
         exp_dir=Path(cfg.exp_dir),
     )
 

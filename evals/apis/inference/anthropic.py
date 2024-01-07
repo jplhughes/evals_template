@@ -25,9 +25,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class AnthropicChatModel(InferenceAPIModel):
-    def __init__(self, num_threads, print_prompt_and_response=False, prompt_history_dir=Path("./prompt_history")):
+    def __init__(self, num_threads, prompt_history_dir=Path("./prompt_history")):
         self.num_threads = num_threads
-        self.print_prompt_and_response = print_prompt_and_response
         self.prompt_history_dir = prompt_history_dir
         self.client = AsyncAnthropic()  # Assuming AsyncAnthropic has a default constructor
         self.available_requests = asyncio.BoundedSemaphore(int(self.num_threads))
@@ -79,7 +78,7 @@ class AnthropicChatModel(InferenceAPIModel):
         )
 
         add_response_to_prompt_file(prompt_file, [llm_response])
-        if self.print_prompt_and_response or print_prompt_and_response:
+        if print_prompt_and_response:
             cprint(prompt, "yellow")
             pattern = r"(Human: |Assistant: )(.*?)(?=(Human: |Assistant: )|$)"
             for match in re.finditer(pattern, prompt, re.S):  # re.S makes . match any character, including a newline
