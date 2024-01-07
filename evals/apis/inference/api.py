@@ -4,58 +4,53 @@ from collections import defaultdict
 from itertools import chain
 from pathlib import Path
 from typing import Callable, Literal, Union
+
 import matplotlib.pyplot as plt
 import numpy as np
 
-import attrs
-
-from evals.llm_api.anthropic_llm import ANTHROPIC_MODELS, AnthropicChatModel
-from evals.llm_api.base_llm import LLMResponse, ModelAPIProtocol
-from evals.llm_api.openai_llm import (
-    BASE_MODELS,
-    GPT_CHAT_MODELS,
-    OpenAIBaseModel,
-    OpenAIChatModel,
-)
+from evals.apis.inference.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
+from evals.apis.inference.openai.chat import OpenAIChatModel
+from evals.apis.inference.openai.completion import OpenAICompletionModel
+from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
+from evals.apis.inference.utils import InferenceAPIModel, LLMResponse
 from evals.utils import load_secrets
 
 LOGGER = logging.getLogger(__name__)
 
 
-@attrs.define()
-class ModelAPI:
-    anthropic_num_threads: int = 5  # current redwood limit is 5
-    openai_fraction_rate_limit: float = attrs.field(default=0.99, validator=attrs.validators.lt(1))
-    organization: str = "ACEDEMICNYUPEREZ_ORG"
-    print_prompt_and_response: bool = False
-    exp_dir: Path = Path("./exp")
-    prompt_history_dir: Path = attrs.field(init=False)
+class InferenceAPI:
+    def __init__(
+        self,
+        anthropic_num_threads=5,
+        openai_fraction_rate_limit=0.99,
+        organization="ACEDEMICNYUPEREZ_ORG",
+        print_prompt_and_response=False,
+        exp_dir=Path("./exp"),
+    ):
+        if openai_fraction_rate_limit >= 1:
+            raise ValueError("openai_fraction_rate_limit must be less than 1")
 
-    _openai_base: OpenAIBaseModel = attrs.field(init=False)
-    _openai_base_arg: OpenAIBaseModel = attrs.field(init=False)
-    _openai_chat: OpenAIChatModel = attrs.field(init=False)
-    _anthropic_chat: AnthropicChatModel = attrs.field(init=False)
-
-    running_cost: float = attrs.field(init=False, default=0)
-    model_timings: dict[str, list[float]] = attrs.field(init=False, default={})
-    model_wait_times: dict[str, list[float]] = attrs.field(init=False, default={})
-
-    def __attrs_post_init__(self):
-        secrets = load_secrets("SECRETS")
-        if self.organization is None:
-            self.organization = "ACEDEMICNYUPEREZ_ORG"
+        self.anthropic_num_threads = anthropic_num_threads
+        self.openai_fraction_rate_limit = openai_fraction_rate_limit
+        self.organization = organization
+        self.print_prompt_and_response = print_prompt_and_response
+        self.exp_dir = exp_dir
         self.prompt_history_dir = self.exp_dir / "prompt_history"
         self.prompt_history_dir.mkdir(parents=True, exist_ok=True)
 
-        self._openai_base = OpenAIBaseModel(
+        secrets = load_secrets("SECRETS")
+        if self.organization is None:
+            self.organization = "ACEDEMICNYUPEREZ_ORG"
+
+        self._openai_base = OpenAICompletionModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
-        # use NYU ARG org for gpt-4-base
+
         if "NYUARG_ORG" in secrets:
-            self._openai_base_arg = OpenAIBaseModel(
+            self._openai_base_arg = OpenAICompletionModel(
                 frac_rate_limit=self.openai_fraction_rate_limit,
                 organization=secrets["NYUARG_ORG"],
                 print_prompt_and_response=self.print_prompt_and_response,
@@ -63,46 +58,23 @@ class ModelAPI:
             )
         else:
             self._openai_base_arg = self._openai_base
+
         self._openai_chat = OpenAIChatModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
+
         self._anthropic_chat = AnthropicChatModel(
             num_threads=self.anthropic_num_threads,
             print_prompt_and_response=self.print_prompt_and_response,
             prompt_history_dir=self.prompt_history_dir,
         )
 
-    async def call_single(
-        self,
-        model_ids: Union[str, list[str]],
-        prompt: Union[list[dict[str, str]], str],
-        max_tokens: int,
-        print_prompt_and_response: bool = False,
-        n: int = 1,
-        max_attempts_per_api_call: int = 10,
-        num_candidates_per_completion: int = 1,
-        is_valid: Callable[[str], bool] = lambda _: True,
-        insufficient_valids_behaviour: Literal["error", "continue", "pad_invalids"] = "error",
-        **kwargs,
-    ) -> str:
-        assert n == 1, f"Expected a single response. {n} responses were requested."
-        responses = await self(
-            model_ids,
-            prompt,
-            max_tokens,
-            print_prompt_and_response,
-            n,
-            max_attempts_per_api_call,
-            num_candidates_per_completion,
-            is_valid,
-            insufficient_valids_behaviour,
-            **kwargs,
-        )
-        assert len(responses) == 1, "Expected a single response."
-        return responses[0].completion
+        self.running_cost = 0
+        self.model_timings = {}
+        self.model_wait_times = {}
 
     async def __call__(
         self,
@@ -152,10 +124,10 @@ class ModelAPI:
             else:
                 model_ids = [model_ids]
 
-        def model_id_to_class(model_id: str) -> ModelAPIProtocol:
+        def model_id_to_class(model_id: str) -> InferenceAPIModel:
             if model_id in ["gpt-4-base", "gpt-3.5-turbo-instruct"]:
                 return self._openai_base_arg  # NYU ARG is only org with access to this model
-            elif model_id in BASE_MODELS:
+            elif model_id in COMPLETION_MODELS:
                 return self._openai_base
             elif model_id in GPT_CHAT_MODELS or "ft:gpt-3.5-turbo" in model_id:
                 return self._openai_chat
@@ -256,7 +228,7 @@ class ModelAPI:
 
 
 async def demo():
-    model_api = ModelAPI(anthropic_num_threads=2, openai_fraction_rate_limit=1)
+    model_api = InferenceAPI(anthropic_num_threads=2, openai_fraction_rate_limit=1)
     anthropic_requests = [
         model_api(
             "claude-instant-1",
