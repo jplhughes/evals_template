@@ -9,7 +9,14 @@ from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 from termcolor import cprint
 
-from evals.apis.inference.openai.utils import count_tokens, price_per_token
+from evals.apis.inference.openai.base import OpenAIModel
+from evals.apis.inference.openai.utils import (
+    COMPLETION_MODELS,
+    OAIChatPrompt,
+    OAICompletionPrompt,
+    count_tokens,
+    price_per_token,
+)
 from evals.apis.inference.utils import (
     PRINT_COLORS,
     add_response_to_prompt_file,
@@ -17,20 +24,18 @@ from evals.apis.inference.utils import (
     messages_to_single_prompt,
 )
 from evals.data_models.language_model import LLMResponse
-from evals.apis.inference.openai.base import OpenAIModel
-from evals.apis.inference.openai.utils import OAIBasePrompt, OAIChatPrompt, BASE_MODELS
 
 LOGGER = logging.getLogger(__name__)
 
 
-class OpenAIBaseModel(OpenAIModel):
-    def _process_prompt(self, prompt: Union[OAIBasePrompt, OAIChatPrompt]) -> OAIBasePrompt:
+class OpenAICompletionModel(OpenAIModel):
+    def _process_prompt(self, prompt: Union[OAICompletionPrompt, OAIChatPrompt]) -> OAICompletionPrompt:
         if isinstance(prompt, list) and isinstance(prompt[0], dict):
             return messages_to_single_prompt(prompt)
         return prompt
 
     def _assert_valid_id(self, model_id: str):
-        assert model_id in BASE_MODELS, f"Invalid model id: {model_id}"
+        assert model_id in COMPLETION_MODELS, f"Invalid model id: {model_id}"
 
     @retry(stop=stop_after_attempt(8), wait=wait_fixed(2))
     async def _get_dummy_response_header(self, model_id: str):
@@ -47,7 +52,7 @@ class OpenAIBaseModel(OpenAIModel):
         return response.headers
 
     @staticmethod
-    def _count_prompt_token_capacity(prompt: OAIBasePrompt, **kwargs) -> int:
+    def _count_prompt_token_capacity(prompt: OAICompletionPrompt, **kwargs) -> int:
         max_tokens = kwargs.get("max_tokens", 15)
         n = kwargs.get("n", 1)
         completion_tokens = n * max_tokens
@@ -60,7 +65,7 @@ class OpenAIBaseModel(OpenAIModel):
             prompt_tokens = sum(len(tokenizer.encode(p)) for p in prompt)
             return prompt_tokens + completion_tokens
 
-    async def _make_api_call(self, prompt: OAIBasePrompt, model_id, start_time, **params) -> list[LLMResponse]:
+    async def _make_api_call(self, prompt: OAICompletionPrompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
         prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
         api_start = time.time()
@@ -85,7 +90,7 @@ class OpenAIBaseModel(OpenAIModel):
         return responses
 
     @staticmethod
-    def _print_prompt_and_response(prompt: OAIBasePrompt, responses: list[LLMResponse]):
+    def _print_prompt_and_response(prompt: OAICompletionPrompt, responses: list[LLMResponse]):
         prompt_list = prompt if isinstance(prompt, list) else [prompt]
         responses_per_prompt = len(responses) // len(prompt_list)
         responses_list = [

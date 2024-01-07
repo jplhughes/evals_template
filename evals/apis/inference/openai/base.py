@@ -6,7 +6,7 @@ from pathlib import Path
 from traceback import format_exc
 from typing import Optional
 
-from evals.apis.inference.openai.utils import BASE_MODELS, price_per_token
+from evals.apis.inference.openai.utils import COMPLETION_MODELS, price_per_token
 from evals.apis.inference.utils import InferenceAPIModel
 from evals.data_models.language_model import LLMResponse
 
@@ -106,7 +106,7 @@ class OpenAIModel(InferenceAPIModel):
         print(f"consumed capacities for model {model_id}: {tokens_consumed}, {requests_consumed}")
         token_cap = token_capacity * self.frac_rate_limit
         request_cap = request_capacity * self.frac_rate_limit
-        if model_id in BASE_MODELS:
+        if model_id in COMPLETION_MODELS:
             token_cap *= 10000  # openai does not track token limit so we can increase it
 
         print(f"setting cap for model {model_id}: {token_cap}, {request_cap}")

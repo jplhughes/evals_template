@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from evals.apis.inference.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
-from evals.apis.inference.openai.utils import BASE_MODELS, GPT_CHAT_MODELS
-from evals.apis.inference.openai.completion import OpenAIBaseModel
 from evals.apis.inference.openai.chat import OpenAIChatModel
+from evals.apis.inference.openai.completion import OpenAICompletionModel
+from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
 from evals.apis.inference.utils import InferenceAPIModel, LLMResponse
 from evals.utils import load_secrets
 
@@ -42,7 +42,7 @@ class InferenceAPI:
         if self.organization is None:
             self.organization = "ACEDEMICNYUPEREZ_ORG"
 
-        self._openai_base = OpenAIBaseModel(
+        self._openai_base = OpenAICompletionModel(
             frac_rate_limit=self.openai_fraction_rate_limit,
             organization=secrets[self.organization],
             print_prompt_and_response=self.print_prompt_and_response,
@@ -50,7 +50,7 @@ class InferenceAPI:
         )
 
         if "NYUARG_ORG" in secrets:
-            self._openai_base_arg = OpenAIBaseModel(
+            self._openai_base_arg = OpenAICompletionModel(
                 frac_rate_limit=self.openai_fraction_rate_limit,
                 organization=secrets["NYUARG_ORG"],
                 print_prompt_and_response=self.print_prompt_and_response,
@@ -127,7 +127,7 @@ class InferenceAPI:
         def model_id_to_class(model_id: str) -> InferenceAPIModel:
             if model_id in ["gpt-4-base", "gpt-3.5-turbo-instruct"]:
                 return self._openai_base_arg  # NYU ARG is only org with access to this model
-            elif model_id in BASE_MODELS:
+            elif model_id in COMPLETION_MODELS:
                 return self._openai_base
             elif model_id in GPT_CHAT_MODELS or "ft:gpt-3.5-turbo" in model_id:
                 return self._openai_chat

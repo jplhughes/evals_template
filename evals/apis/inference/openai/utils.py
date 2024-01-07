@@ -1,11 +1,12 @@
-import tiktoken
 from typing import Union
 
+import tiktoken
+
 OAIChatPrompt = list[dict[str, str]]
-OAIBasePrompt = Union[str, list[str]]
+OAICompletionPrompt = Union[str, list[str]]
 
 
-BASE_MODELS = {
+COMPLETION_MODELS = {
     "davinci-002",
     "babbage-002",
     "text-davinci-003",
