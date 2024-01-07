@@ -7,7 +7,6 @@ from typing import Protocol
 
 from evals.data_models.language_model import LLMResponse
 
-PRINT_COLORS = {"user": "cyan", "system": "magenta", "assistant": "light_green"}
 LOGGER = logging.getLogger(__name__)
 
 

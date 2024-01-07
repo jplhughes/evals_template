@@ -2,8 +2,12 @@ from enum import Enum
 from typing import Sequence, Optional, Dict, Self
 from pydantic import BaseModel
 import anthropic
+from termcolor import cprint
 
 from evals.data_models.hashable import HashableBaseModel
+from evals.data_models.language_model import LLMResponse
+
+PRINT_COLORS = {"user": "cyan", "system": "magenta", "assistant": "light_green", "none": "cyan"}
 
 
 class MessageRole(str, Enum):
@@ -26,6 +30,13 @@ class ChatMessage(HashableBaseModel):
         return ChatMessage(role=MessageRole.none, content=self.content)
 
 
+class PromptTemplate(BaseModel):
+    method: str
+    messages: Sequence[ChatMessage]
+    messages_followup: Optional[Sequence[ChatMessage]] = None
+    extra: Dict[str, str] = {}
+
+
 class Prompt(BaseModel):
     messages: Sequence[ChatMessage]
 
@@ -38,21 +49,20 @@ class Prompt(BaseModel):
                 out += f"\n{msg.content}"
         return out.strip()
 
+    def __add__(self, other: "Prompt") -> Self:
+        return self.__class__(messages=list(self.messages) + list(other.messages))
+
     @classmethod
     def from_prompt(cls, prompt: "Prompt") -> Self:
         return cls(messages=prompt.messages)
 
-    def __add__(self, other: "Prompt") -> Self:
-        return self.__class__(messages=list(self.messages) + list(other.messages))
+    def add_assistant_message(self, message: str) -> "Prompt":
+        return self + Prompt(messages=[ChatMessage(role=MessageRole.assistant, content=message)])
 
     def openai_format(self) -> list[Dict]:
         return [msg.dict() for msg in self.messages]
 
     def anthropic_format(self) -> str:
-        # Add the required empty assistant tag for Claude models if the last message does not have the assistant role
-        if self.messages[-1].role == MessageRole.user:
-            self.messages.append(ChatMessage(role=MessageRole.assistant, content=""))
-
         message = ""
         for msg in self.messages:
             match msg.role:
@@ -65,11 +75,17 @@ class Prompt(BaseModel):
                 case MessageRole.system:
                     # No need to add something infront for system messages
                     message += f"\n\n{msg.content}"
+        # Add the required empty assistant tag for Claude models if the last message does not have the assistant role
+        if self.messages[-1].role != MessageRole.assistant:
+            message += f"{anthropic.AI_PROMPT}"
         return message
 
-
-class PromptTemplate(BaseModel):
-    method: str
-    messages: Sequence[ChatMessage]
-    messages_followup: Optional[Sequence[ChatMessage]] = None
-    extra: Dict[str, str] = {}
+    def pretty_print(self, responses: list[LLMResponse]) -> None:
+        for msg in self.messages:
+            if msg.role != MessageRole.none:
+                cprint(f"=={msg.role.upper()}:", "white")
+            cprint(msg.content, PRINT_COLORS[msg.role])
+        for i, response in enumerate(responses):
+            cprint(f"==RESPONSE {i + 1} ({response.model_id}):", "white")
+            cprint(response.completion, PRINT_COLORS["assistant"], attrs=["bold"])
+        print()
