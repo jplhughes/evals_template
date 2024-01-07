@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Union
 
 import openai
 import requests
@@ -12,8 +11,6 @@ from termcolor import cprint
 from evals.apis.inference.openai.base import OpenAIModel
 from evals.apis.inference.openai.utils import (
     COMPLETION_MODELS,
-    OAIChatPrompt,
-    OAICompletionPrompt,
     count_tokens,
     price_per_token,
 )
@@ -21,18 +18,16 @@ from evals.apis.inference.utils import (
     PRINT_COLORS,
     add_response_to_prompt_file,
     create_prompt_history_file,
-    messages_to_single_prompt,
 )
 from evals.data_models.language_model import LLMResponse
+from evals.data_models.messages import Prompt
 
 LOGGER = logging.getLogger(__name__)
 
 
 class OpenAICompletionModel(OpenAIModel):
-    def _process_prompt(self, prompt: Union[OAICompletionPrompt, OAIChatPrompt]) -> OAICompletionPrompt:
-        if isinstance(prompt, list) and isinstance(prompt[0], dict):
-            return messages_to_single_prompt(prompt)
-        return prompt
+    def _process_prompt(self, prompt: Prompt) -> str:
+        return str(prompt)
 
     def _assert_valid_id(self, model_id: str):
         assert model_id in COMPLETION_MODELS, f"Invalid model id: {model_id}"
@@ -52,20 +47,16 @@ class OpenAICompletionModel(OpenAIModel):
         return response.headers
 
     @staticmethod
-    def _count_prompt_token_capacity(prompt: OAICompletionPrompt, **kwargs) -> int:
+    def _count_prompt_token_capacity(prompt: str, **kwargs) -> int:
         max_tokens = kwargs.get("max_tokens", 15)
         n = kwargs.get("n", 1)
         completion_tokens = n * max_tokens
 
         tokenizer = tiktoken.get_encoding("cl100k_base")
-        if isinstance(prompt, str):
-            prompt_tokens = len(tokenizer.encode(prompt))
-            return prompt_tokens + completion_tokens
-        else:
-            prompt_tokens = sum(len(tokenizer.encode(p)) for p in prompt)
-            return prompt_tokens + completion_tokens
+        prompt_tokens = len(tokenizer.encode(prompt))
+        return prompt_tokens + completion_tokens
 
-    async def _make_api_call(self, prompt: OAICompletionPrompt, model_id, start_time, **params) -> list[LLMResponse]:
+    async def _make_api_call(self, prompt: str, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
         prompt_file = create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
         api_start = time.time()
@@ -92,26 +83,9 @@ class OpenAICompletionModel(OpenAIModel):
         return responses
 
     @staticmethod
-    def _print_prompt_and_response(prompt: OAICompletionPrompt, responses: list[LLMResponse]):
-        prompt_list = prompt if isinstance(prompt, list) else [prompt]
-        responses_per_prompt = len(responses) // len(prompt_list)
-        responses_list = [
-            responses[i : i + responses_per_prompt] for i in range(0, len(responses), responses_per_prompt)
-        ]
-        for i, (prompt, response_list) in enumerate(zip(prompt_list, responses_list)):
-            if len(prompt_list) > 1:
-                cprint(f"==PROMPT {i + 1}", "white")
-            if len(response_list) == 1:
-                cprint(f"=={response_list[0].model_id}", "white")
-                cprint(prompt, PRINT_COLORS["user"], end="")
-                cprint(
-                    response_list[0].completion,
-                    PRINT_COLORS["assistant"],
-                    attrs=["bold"],
-                )
-            else:
-                cprint(prompt, PRINT_COLORS["user"])
-                for j, response in enumerate(response_list):
-                    cprint(f"==RESPONSE {j + 1} ({response.model_id}):", "white")
-                    cprint(response.completion, PRINT_COLORS["assistant"], attrs=["bold"])
-            print()
+    def _print_prompt_and_response(prompt: str, responses: list[LLMResponse]):
+        cprint(prompt, PRINT_COLORS["user"])
+        for j, response in enumerate(responses):
+            cprint(f"==RESPONSE {j + 1} ({response.model_id}):", "white")
+            cprint(response.completion, PRINT_COLORS["assistant"], attrs=["bold"])
+        print()

@@ -1,9 +1,4 @@
-from typing import Union
-
 import tiktoken
-
-OAIChatPrompt = list[dict[str, str]]
-OAICompletionPrompt = Union[str, list[str]]
 
 
 COMPLETION_MODELS = {
