@@ -1,9 +1,9 @@
 import asyncio
 import logging
-from collections import defaultdict
 from itertools import chain
 from pathlib import Path
 from typing import Callable, Literal, Union
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,12 +14,16 @@ from evals.apis.inference.openai.completion import OpenAICompletionModel
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
 from evals.apis.inference.utils import InferenceAPIModel, LLMResponse
 from evals.data_models.messages import Prompt
-from evals.utils import load_secrets
+from evals.utils import load_secrets, setup_environment
 
 LOGGER = logging.getLogger(__name__)
 
 
 class InferenceAPI:
+    """
+    A wrapper around the OpenAI and Anthropic APIs that automatically manages rate limits and valid responses.
+    """
+
     def __init__(
         self,
         anthropic_num_threads=5,
@@ -75,7 +79,7 @@ class InferenceAPI:
         self,
         model_ids: Union[str, list[str]],
         prompt: Prompt,
-        max_tokens: int,
+        max_tokens: int = None,
         print_prompt_and_response: bool = False,
         n: int = 1,
         max_attempts_per_api_call: int = 10,
@@ -228,16 +232,10 @@ class InferenceAPI:
 
 
 async def demo():
-    model_api = InferenceAPI(anthropic_num_threads=2, openai_fraction_rate_limit=1)
-    anthropic_requests = [
-        model_api(
-            "claude-instant-1",
-            "\n\nHuman: What's your name?\n\nAssistant:",
-            True,
-            max_tokens_to_sample=2,
-        )
-    ]
-    oai_chat_messages = [
+    setup_environment()
+    model_api = InferenceAPI()
+
+    prompt_examples = [
         [
             {"role": "system", "content": "You are a comedic pirate."},
             {"role": "user", "content": "Hello!"},
@@ -249,22 +247,36 @@ async def demo():
             },
             {"role": "user", "content": "Hello!"},
         ],
+        [
+            {
+                "role": "system",
+                "content": "You are a swashbuckling space-faring voyager.",
+            },
+            {"role": "user", "content": "Hello!"},
+            {"role": "assistant", "content": "How dare you call me a"},
+        ],
+        [
+            {"role": "none", "content": "whence afterever the storm"},
+        ],
     ]
-    oai_chat_models = ["gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"]
+    prompts = [Prompt(messages=messages) for messages in prompt_examples]
+
+    # test anthropic chat, and continuing assistant message
+    anthropic_requests = [
+        model_api("claude-2.1", prompt=prompts[0], n=1, print_prompt_and_response=True),
+        model_api("claude-2.1", prompt=prompts[2], n=1, print_prompt_and_response=True),
+    ]
+
+    # test OAI chat, more than 1 model and n > 1
+    oai_chat_models = ["gpt-3.5-turbo", "gpt-3.5-turbo-0613"]
     oai_chat_requests = [
-        model_api(
-            oai_chat_models,
-            prompt=message,
-            n=6,
-            max_tokens=16_000,
-            print_prompt_and_response=True,
-        )
-        for message in oai_chat_messages
+        model_api(oai_chat_models, prompt=prompts[1], n=6, print_prompt_and_response=True),
     ]
-    oai_messages = ["1 2 3", ["beforeth they cometh", "whence afterever the storm"]]
-    oai_models = ["davinci-002"]
+
+    # test OAI completion with none message and assistant message to continue
     oai_requests = [
-        model_api(oai_models, prompt=message, n=1, print_prompt_and_response=True) for message in oai_messages
+        model_api("gpt-3.5-turbo-instruct", prompt=prompts[2], print_prompt_and_response=True),
+        model_api("gpt-3.5-turbo-instruct", prompt=prompts[3], print_prompt_and_response=True),
     ]
     answer = await asyncio.gather(*anthropic_requests, *oai_chat_requests, *oai_requests)
 

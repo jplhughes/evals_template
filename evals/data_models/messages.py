@@ -56,13 +56,27 @@ class Prompt(BaseModel):
     def from_prompt(cls, prompt: "Prompt") -> Self:
         return cls(messages=prompt.messages)
 
+    def is_none_in_messages(self) -> bool:
+        return any(msg.role == MessageRole.none for msg in self.messages)
+
+    def is_last_message_assistant(self) -> bool:
+        return self.messages[-1].role == MessageRole.assistant
+
     def add_assistant_message(self, message: str) -> "Prompt":
         return self + Prompt(messages=[ChatMessage(role=MessageRole.assistant, content=message)])
 
     def openai_format(self) -> list[Dict]:
+        if self.is_last_message_assistant():
+            raise ValueError(
+                f"OpenAI chat prompts cannot end with an assistant message. Got {self.messages[-1].role}: {self.messages[-1].content}"
+            )
+        if self.is_none_in_messages():
+            raise ValueError(f"OpenAI chat prompts cannot have a None role. Got {self.messages}")
         return [msg.dict() for msg in self.messages]
 
     def anthropic_format(self) -> str:
+        if self.is_none_in_messages():
+            raise ValueError(f"Anthropic chat prompts cannot have a None role. Got {self.messages}")
         message = ""
         for msg in self.messages:
             match msg.role:
@@ -71,7 +85,7 @@ class Prompt(BaseModel):
                 case MessageRole.assistant:
                     message += f"{anthropic.AI_PROMPT} {msg.content}"
                 case MessageRole.none:
-                    raise ValueError(f"Anthropic chat messages cannot have a None role. Got {self.messages}")
+                    message += f"\n\n{msg.content}"
                 case MessageRole.system:
                     # No need to add something infront for system messages
                     message += f"\n\n{msg.content}"
