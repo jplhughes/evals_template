@@ -13,10 +13,6 @@ from evals.apis.inference.openai.utils import (
     count_tokens,
     price_per_token,
 )
-from evals.apis.inference.utils import (
-    add_response_to_prompt_file,
-    create_prompt_history_file,
-)
 from evals.data_models.language_model import LLMResponse
 from evals.data_models.messages import Prompt
 
@@ -53,7 +49,7 @@ class OpenAICompletionModel(OpenAIModel):
 
     async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
-        prompt_file = create_prompt_history_file(str(prompt), model_id, self.prompt_history_dir)
+        prompt_file = self.create_prompt_history_file(str(prompt), model_id, self.prompt_history_dir)
         api_start = time.time()
         api_response: OpenAICompletion = await openai.Completion.acreate(
             prompt=str(prompt), model=model_id, organization=self.organization, **params
@@ -74,5 +70,5 @@ class OpenAICompletionModel(OpenAIModel):
             )
             for choice in api_response.choices
         ]
-        add_response_to_prompt_file(prompt_file, responses)
+        self.add_response_to_prompt_file(prompt_file, responses)
         return responses

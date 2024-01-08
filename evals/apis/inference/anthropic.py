@@ -9,11 +9,7 @@ from anthropic import AsyncAnthropic
 from anthropic.types.completion import Completion as AnthropicCompletion
 
 from evals.data_models.messages import Prompt
-from evals.apis.inference.utils import (
-    InferenceAPIModel,
-    add_response_to_prompt_file,
-    create_prompt_history_file,
-)
+from evals.apis.inference.model import InferenceAPIModel
 from evals.data_models.language_model import LLMResponse
 
 ANTHROPIC_MODELS = {"claude-instant-1", "claude-2.0", "claude-v1.3", "claude-2.1"}
@@ -39,7 +35,7 @@ class AnthropicChatModel(InferenceAPIModel):
         assert len(model_ids) == 1, "Anthropic implementation only supports one model at a time."
         model_id = model_ids[0]
         prompt_string = prompt.anthropic_format()
-        prompt_file = create_prompt_history_file(prompt_string, model_id, self.prompt_history_dir)
+        prompt_file = self.create_prompt_history_file(prompt_string, model_id, self.prompt_history_dir)
         LOGGER.debug(f"Making {model_id} call")
         response: Optional[AnthropicCompletion] = None
         duration = None
@@ -72,7 +68,7 @@ class AnthropicChatModel(InferenceAPIModel):
         )
         responses = [response]
 
-        add_response_to_prompt_file(prompt_file, responses)
+        self.add_response_to_prompt_file(prompt_file, responses)
         if print_prompt_and_response:
             prompt.pretty_print(responses)
 
