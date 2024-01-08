@@ -1,4 +1,4 @@
-# README for Evaluation Scripts Repository
+# Evals Template
 
 ## Overview
 
