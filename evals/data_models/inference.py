@@ -1,11 +1,11 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, validator
 
 
 class LLMParams(BaseModel):
-    model: str
+    model: Union[str, List[str]]
     temperature: float = 0.2
     top_p: float = 1.0
     max_tokens: Optional[int] = None

@@ -12,7 +12,7 @@ from evals.apis.inference.openai.utils import (
     count_tokens,
     price_per_token,
 )
-from evals.data_models.language_model import LLMResponse
+from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import Prompt
 
 LOGGER = logging.getLogger(__name__)

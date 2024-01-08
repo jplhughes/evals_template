@@ -8,7 +8,7 @@ from typing import Optional
 
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, price_per_token
 from evals.apis.inference.model import InferenceAPIModel
-from evals.data_models.language_model import LLMResponse
+from evals.data_models.inference import LLMResponse
 
 LOGGER = logging.getLogger(__name__)
 

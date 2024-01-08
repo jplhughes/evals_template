@@ -9,7 +9,7 @@ import pandas as pd
 from omegaconf import DictConfig, OmegaConf
 
 from evals.apis.inference.api import InferenceAPI
-from evals.data_models.language_model import LLMParams
+from evals.data_models.inference import LLMParams
 from evals.data_models.messages import ChatMessage, PromptTemplate, Prompt
 from evals.load.mmlu import load_mmlu
 from evals.utils import async_function_with_retry, setup_environment

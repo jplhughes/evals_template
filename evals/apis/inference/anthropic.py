@@ -10,7 +10,7 @@ from anthropic.types.completion import Completion as AnthropicCompletion
 
 from evals.data_models.messages import Prompt
 from evals.apis.inference.model import InferenceAPIModel
-from evals.data_models.language_model import LLMResponse
+from evals.data_models.inference import LLMResponse
 
 ANTHROPIC_MODELS = {"claude-instant-1", "claude-2.0", "claude-v1.3", "claude-2.1"}
 LOGGER = logging.getLogger(__name__)
