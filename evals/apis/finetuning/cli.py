@@ -4,29 +4,23 @@ from pathlib import Path
 
 import openai
 import pandas as pd
-import typer
+import fire
 
 from evals.utils import save_jsonl, setup_environment
 
-typer.main.get_command_name = lambda name: name
-app = typer.Typer()
 
-
-@app.command()
 def list_finetunes(limit: int = 100, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     finetunes = openai.FineTuningJob.list(limit=limit)
     print(finetunes)
 
 
-@app.command()
 def delete_file(file_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     openai.File.delete(file_id)
     print(f"Deleted file {file_id}")
 
 
-@app.command()
 def delete_all_files(organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     files = openai.File.list().data  # type: ignore
@@ -39,26 +33,22 @@ def delete_all_files(organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     print("deleted all files")
 
 
-@app.command()
 def list_all_files(organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     files = openai.File.list().data  # type: ignore
     print(files)
 
 
-@app.command()
 def cancel_job(job_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     print(openai.FineTuningJob.cancel(job_id))
 
 
-@app.command()
 def retrieve_job(job_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     print(openai.FineTuningJob.retrieve(job_id))
 
 
-@app.command()
 def download_result_file(result_file_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     file = openai.File.retrieve(result_file_id)
@@ -70,7 +60,6 @@ def download_result_file(result_file_id: str, organization: str = "ACEDEMICNYUPE
     print(csv.to_markdown())
 
 
-@app.command()
 def download_training_file(training_file_id: str, organization: str = "ACEDEMICNYUPEREZ_ORG") -> None:
     setup_environment(organization=organization)
     openai.File.retrieve(training_file_id)
@@ -80,7 +69,6 @@ def download_training_file(training_file_id: str, organization: str = "ACEDEMICN
     print(len(output))
 
 
-@app.command()
 def save_test_file(file_path: Path = Path.home() / "test.jsonl"):
     messages = [
         {"role": "user", "content": "hello"},
@@ -91,4 +79,4 @@ def save_test_file(file_path: Path = Path.home() / "test.jsonl"):
 
 
 if __name__ == "__main__":
-    app()
+    fire.Fire()
