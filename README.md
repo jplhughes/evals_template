@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains the `run.py` script and associated files for conducting evaluations using machine learning models, specifically focusing on language models like GPT-3.5. It is designed to handle tasks such as generating responses to prompts, caching results, and managing API interactions efficiently.
+This repository contains the `run.py` script and associated files for conducting evaluations using LLMs from the Anthroppic and OpenAI APIs. It is designed to handle tasks such as generating responses to prompts, caching results, and managing API interactions efficiently.
 
 ## Setup
 
@@ -22,9 +22,17 @@ This repository contains the `run.py` script and associated files for conducting
     ```bash
     pip install -r requirements.txt
     ```
-3. Install Pre-Commit Hooks (Optional):
+3. Install Pre-Commit Hooks:
     ```bash
     make hooks
+    ```
+4. Create a SECRETS file
+    ```bash
+    touch SECRETS
+    echo OPENAI_API_KEY=<INSERT_HERE> >> SECRETS
+    echo ANTHROPIC_API_KEY=<INSERT_HERE> >> SECRETS
+    echo ACEDEMICNYUPEREZ_ORG=org-<INSERT_HERE> >> SECRETS
+    echo FARAI_ORG=org-<INSERT_HERE> >> SECRETS
     ```
 
 ## Usage
@@ -60,17 +68,15 @@ This repository contains the `run.py` script and associated files for conducting
 
 ## Repository Structure
 
-- `run.py`: Main script for evaluations.
-- `requirements.txt`: List of Python packages required.
-- `Makefile`: Contains commands for setting up pre-commit hooks and other utilities.
-- `evals/`: Directory containing modules for API interactions, data processing, and utility functions.
+- `evals/run.py`: Main script for evaluations.
+- `evals/apis`: Directory containing modules for API interactions including inference and fine-tuning
+- `evals/conf`: Directory containing configuration files for Hydra.
+- `evals/data_models`: Directory containing Pydantic data models
+- `evals/load`: Directory containing code to download and process MMLU
+- `tests`: Directory containing unit tests
 
 ## Contributing
 
 Contributions to this repository are welcome. Please follow the standard procedures for submitting issues and pull requests.
-
-## License
-
-Specify your licensing information here.
 
 ---
