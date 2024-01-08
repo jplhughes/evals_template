@@ -69,7 +69,7 @@ This repository contains the `run.py` script and associated files for conducting
   Hydra enables easy overriding of configuration variables. Use `++` for overrides. You can reference other variables within variables using `${var}` syntax.
 
 - **Caching Mechanism:**
-  Caches prompt calls to avoid redundant API calls. Cache location defaults to `$exp_dir/cache`.
+  Caches prompt calls to avoid redundant API calls. Cache location defaults to `$exp_dir/cache`. This means you can kill your run anytime and restart it without worrying about wasting API calls.
 
 - **Prompt History Logging:**
   For debugging, human-readable `.txt` files are stored in `$exp_dir/prompt_history`, timestamped for easy reference.
@@ -97,6 +97,7 @@ This repository contains the `run.py` script and associated files for conducting
 - `evals/data_models`: Directory containing Pydantic data models
 - `evals/load`: Directory containing code to download and process MMLU
 - `tests`: Directory containing unit tests
+- `scripts`: Example scripts on how to run sweep experiments
 
 ## Contributing
 
