@@ -10,7 +10,7 @@ hydra:
 
 defaults:
   - prompt: zero-shot
-  - language_model: gpt-4-turbo
+  - language_model: gpt-3.5-turbo
 
 # Common Params
 exp_dir: ???
