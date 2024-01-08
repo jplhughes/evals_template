@@ -6,10 +6,6 @@ import requests
 from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from evals.apis.inference.utils import (
-    add_response_to_prompt_file,
-    create_prompt_history_file,
-)
 from evals.data_models.language_model import LLMResponse
 from evals.apis.inference.openai.base import OpenAIModel
 from evals.apis.inference.openai.utils import count_tokens, price_per_token, GPT_CHAT_MODELS
@@ -79,7 +75,7 @@ class OpenAIChatModel(OpenAIModel):
             params["top_logprobs"] = params["logprobs"]
             params["logprobs"] = True
 
-        prompt_file = create_prompt_history_file(prompt.openai_format(), model_id, self.prompt_history_dir)
+        prompt_file = self.create_prompt_history_file(prompt.openai_format(), model_id, self.prompt_history_dir)
         api_start = time.time()
         api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
             messages=prompt.openai_format(), model=model_id, organization=self.organization, **params
@@ -100,5 +96,5 @@ class OpenAIChatModel(OpenAIModel):
             )
             for choice in api_response.choices
         ]
-        add_response_to_prompt_file(prompt_file, responses)
+        self.add_response_to_prompt_file(prompt_file, responses)
         return responses

@@ -12,7 +12,7 @@ from evals.apis.inference.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
 from evals.apis.inference.openai.chat import OpenAIChatModel
 from evals.apis.inference.openai.completion import OpenAICompletionModel
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
-from evals.apis.inference.utils import InferenceAPIModel, LLMResponse
+from evals.apis.inference.model import InferenceAPIModel, LLMResponse
 from evals.data_models.messages import Prompt
 from evals.utils import load_secrets, setup_environment
 

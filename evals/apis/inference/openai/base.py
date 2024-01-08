@@ -7,7 +7,7 @@ from traceback import format_exc
 from typing import Optional
 
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, price_per_token
-from evals.apis.inference.utils import InferenceAPIModel
+from evals.apis.inference.model import InferenceAPIModel
 from evals.data_models.language_model import LLMResponse
 
 LOGGER = logging.getLogger(__name__)
