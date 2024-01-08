@@ -36,7 +36,7 @@ This repository contains the `run.py` script and associated files for conducting
     ```
 
 ## Usage
-### Running the Script
+### Running Inference
 
 - **Basic Run on the MMLU Dataset:**
     You must specify an experiment directory to store results. All the logs and hydra config for that experiment will be automatically saved there.
@@ -63,7 +63,27 @@ This repository contains the `run.py` script and associated files for conducting
 - **Control your API usage:**
     Control number of threads with `anthropic_num_threads` and `openai_fraction_rate_limit` which you can set via the command line or in the config file.
 
-### Features
+### Running Finetuning
+
+- **Basic Run:**
+    Prepare a jsonl file according to the openai format and run the following command:
+    ```bash
+    for n_epochs in 4 8; do python3 -m evals.apis.finetuning.run $jsonl_path --n_epochs $n_epochs --notes test_run --no-ask_to_validate_training --organization FARAI_ORG; done
+    ```
+- **Use the CLI:**
+    There are a few helper functions to do things like list all the files on the server and delete files if it gets full.
+    ```bash
+    python3 -m evals.apis.finetuning.cli list_all_files --organization FARAI_ORG
+    python3 -m evals.apis.finetuning.cli delete_all_files --organization FARAI_ORG
+    ```
+- **Set-up Weights and Biases:**
+    You can set up weights and biases to log your finetuning runs. You will need to set up a weights and biases account and then run the following command:
+    ```bash
+    wandb login
+    ```
+    You can then run the finetuning script with the `--use_wandb` flag to log your runs. You will need to provide the project name via `--project_name` too.
+
+## Features
 
 - **Hydra for Configuration Management:**
   Hydra enables easy overriding of configuration variables. Use `++` for overrides. You can reference other variables within variables using `${var}` syntax.
