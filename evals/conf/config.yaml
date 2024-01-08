@@ -20,6 +20,8 @@ limit: 50
 reset: false
 logging: INFO
 print_prompt_and_response: false
+cache_dir: ${exp_dir}/cache
+prompt_history_dir: ${exp_dir}/prompt_history
 
 # API
 organization: ACEDEMICNYUPEREZ_ORG

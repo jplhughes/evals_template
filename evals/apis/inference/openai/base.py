@@ -54,9 +54,9 @@ class Resource:
 class OpenAIModel(InferenceAPIModel):
     def __init__(
         self,
-        frac_rate_limit,
-        organization,
-        prompt_history_dir=Path("./prompt_history"),
+        frac_rate_limit: float,
+        organization: str,
+        prompt_history_dir: Path = None,
     ):
         self.frac_rate_limit = frac_rate_limit
         self.organization = organization

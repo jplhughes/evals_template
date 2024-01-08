@@ -1,10 +1,11 @@
 from enum import Enum
-from typing import List, Optional, Union, Literal
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel, validator
+from evals.data_models.hashable import HashableBaseModel
 
 
-class LLMParams(BaseModel):
+class LLMParams(HashableBaseModel):
     model: Union[str, List[str]]
     temperature: float = 0.2
     top_p: float = 1.0

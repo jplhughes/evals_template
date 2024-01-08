@@ -37,7 +37,7 @@ class PromptTemplate(BaseModel):
     extra: Dict[str, str] = {}
 
 
-class Prompt(BaseModel):
+class Prompt(HashableBaseModel):
     messages: Sequence[ChatMessage]
 
     def __str__(self) -> str:

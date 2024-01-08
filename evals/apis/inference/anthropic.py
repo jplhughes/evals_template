@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class AnthropicChatModel(InferenceAPIModel):
-    def __init__(self, num_threads, prompt_history_dir=Path("./prompt_history")):
+    def __init__(self, num_threads: int, prompt_history_dir: Path = None):
         self.num_threads = num_threads
         self.prompt_history_dir = prompt_history_dir
         self.client = AsyncAnthropic()  # Assuming AsyncAnthropic has a default constructor

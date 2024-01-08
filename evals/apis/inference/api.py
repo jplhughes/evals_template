@@ -27,11 +27,10 @@ class InferenceAPI:
 
     def __init__(
         self,
-        anthropic_num_threads=5,
-        openai_fraction_rate_limit=0.99,
-        organization="ACEDEMICNYUPEREZ_ORG",
-        exp_dir=Path("./exp"),
-        use_cache=True,
+        anthropic_num_threads: int = 5,
+        openai_fraction_rate_limit: float = 0.99,
+        organization: str = "ACEDEMICNYUPEREZ_ORG",
+        prompt_history_dir: Path = None,
     ):
         if openai_fraction_rate_limit >= 1:
             raise ValueError("openai_fraction_rate_limit must be less than 1")
@@ -39,13 +38,7 @@ class InferenceAPI:
         self.anthropic_num_threads = anthropic_num_threads
         self.openai_fraction_rate_limit = openai_fraction_rate_limit
         self.organization = organization
-        self.exp_dir = exp_dir
-        self.use_cache = use_cache
-        self.cache_dir = self.exp_dir / "cache"
-        if use_cache:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.prompt_history_dir = self.exp_dir / "prompt_history"
-        self.prompt_history_dir.mkdir(parents=True, exist_ok=True)
+        self.prompt_history_dir = prompt_history_dir
 
         secrets = load_secrets("SECRETS")
         if self.organization is None:
