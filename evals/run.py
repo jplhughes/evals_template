@@ -18,11 +18,19 @@ LOGGER = logging.getLogger(__name__)
 
 
 class DatasetRunner:
-    def __init__(self, prompt_template: PromptTemplate, llm_params: LLMParams, inference_api: InferenceAPI, swap: bool):
+    def __init__(
+        self,
+        prompt_template: PromptTemplate,
+        llm_params: LLMParams,
+        inference_api: InferenceAPI,
+        swap: bool,
+        print_prompt_and_response: bool = False,
+    ):
         self.prompt_template = prompt_template
         self.llm_params = llm_params
         self.inference_api = inference_api
         self.swap = swap
+        self.print_prompt_and_response = print_prompt_and_response
 
     async def run(self, index: int, row: pd.Series) -> dict:
         prompt = self.process_prompt(row)
@@ -124,7 +132,7 @@ async def async_main(cfg: DictConfig):
     # load configs
     prompt_parts = PromptTemplate(**OmegaConf.to_container(cfg.prompt, resolve=True))
     llm_params = LLMParams(**OmegaConf.to_container(cfg.language_model, resolve=True))
-    dataset_runner = DatasetRunner(prompt_parts, llm_params, inference_api, cfg.swap)
+    dataset_runner = DatasetRunner(prompt_parts, llm_params, inference_api, cfg.swap, cfg.print_prompt_and_response)
 
     # load dataset and save to file
     exp_dir = Path(cfg.exp_dir)

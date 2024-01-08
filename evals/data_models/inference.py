@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Literal
 
 from pydantic import BaseModel, validator
 
@@ -8,10 +8,11 @@ class LLMParams(BaseModel):
     model: Union[str, List[str]]
     temperature: float = 0.2
     top_p: float = 1.0
-    max_tokens: Optional[int] = None
+    n: int = 1
     num_candidates_per_completion: int = 1
-    insufficient_valids_behaviour: str = "stop"
-    print_prompt_and_response: bool = False
+    insufficient_valids_behaviour: Literal["error", "continue", "pad_invalids"] = "error"
+    max_tokens: Optional[int] = None
+    logprobs: Optional[int] = None
 
 
 class StopReason(Enum):

@@ -19,6 +19,7 @@ seed: 0
 limit: 50
 reset: false
 logging: INFO
+print_prompt_and_response: false
 
 # API
 organization: ACEDEMICNYUPEREZ_ORG
