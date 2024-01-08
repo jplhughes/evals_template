@@ -3,7 +3,6 @@ import time
 
 import openai
 import requests
-import tiktoken
 from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 
@@ -43,8 +42,7 @@ class OpenAICompletionModel(OpenAIModel):
         n = kwargs.get("n", 1)
         completion_tokens = n * max_tokens
 
-        tokenizer = tiktoken.get_encoding("cl100k_base")
-        prompt_tokens = len(tokenizer.encode(str(prompt)))
+        prompt_tokens = count_tokens(str(prompt))
         return prompt_tokens + completion_tokens
 
     async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
