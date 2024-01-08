@@ -76,6 +76,17 @@ def save_jsonl(file_path, data):
             f.write("\n")
 
 
+def load_json(file_path):
+    with open(file_path, "r") as f:
+        data = json.load(f)
+    return data
+
+
+def save_json(file_path, data):
+    with open(file_path, "w") as f:
+        json.dump(data, f)
+
+
 @retry(
     stop=stop_after_attempt(8),
     retry=retry_if_result(lambda result: result is not True),

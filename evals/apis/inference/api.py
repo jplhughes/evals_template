@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from evals.apis.inference.anthropic import ANTHROPIC_MODELS, AnthropicChatModel
-from evals.apis.inference.model import InferenceAPIModel, LLMResponse
+from evals.apis.inference.model import InferenceAPIModel
 from evals.apis.inference.openai.chat import OpenAIChatModel
 from evals.apis.inference.openai.completion import OpenAICompletionModel
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
+from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import Prompt
 from evals.utils import load_secrets, setup_environment
 
@@ -26,10 +27,10 @@ class InferenceAPI:
 
     def __init__(
         self,
-        anthropic_num_threads=5,
-        openai_fraction_rate_limit=0.99,
-        organization="ACEDEMICNYUPEREZ_ORG",
-        exp_dir=Path("./exp"),
+        anthropic_num_threads: int = 5,
+        openai_fraction_rate_limit: float = 0.99,
+        organization: str = "ACEDEMICNYUPEREZ_ORG",
+        prompt_history_dir: Path = None,
     ):
         if openai_fraction_rate_limit >= 1:
             raise ValueError("openai_fraction_rate_limit must be less than 1")
@@ -37,9 +38,7 @@ class InferenceAPI:
         self.anthropic_num_threads = anthropic_num_threads
         self.openai_fraction_rate_limit = openai_fraction_rate_limit
         self.organization = organization
-        self.exp_dir = exp_dir
-        self.prompt_history_dir = self.exp_dir / "prompt_history"
-        self.prompt_history_dir.mkdir(parents=True, exist_ok=True)
+        self.prompt_history_dir = prompt_history_dir
 
         secrets = load_secrets("SECRETS")
         if self.organization is None:

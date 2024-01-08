@@ -8,7 +8,7 @@ from typing import Optional
 
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, price_per_token
 from evals.apis.inference.model import InferenceAPIModel
-from evals.data_models.language_model import LLMResponse
+from evals.data_models.inference import LLMResponse
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,9 +54,9 @@ class Resource:
 class OpenAIModel(InferenceAPIModel):
     def __init__(
         self,
-        frac_rate_limit,
-        organization,
-        prompt_history_dir=Path("./prompt_history"),
+        frac_rate_limit: float,
+        organization: str,
+        prompt_history_dir: Path = None,
     ):
         self.frac_rate_limit = frac_rate_limit
         self.organization = organization

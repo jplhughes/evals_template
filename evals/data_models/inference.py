@@ -1,17 +1,19 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel, validator
+from evals.data_models.hashable import HashableBaseModel
 
 
-class LLMParams(BaseModel):
-    model: str
+class LLMParams(HashableBaseModel):
+    model: Union[str, List[str]]
     temperature: float = 0.2
     top_p: float = 1.0
-    max_tokens: Optional[int] = None
+    n: int = 1
     num_candidates_per_completion: int = 1
-    insufficient_valids_behaviour: str = "stop"
-    print_prompt_and_response: bool = False
+    insufficient_valids_behaviour: Literal["error", "continue", "pad_invalids"] = "error"
+    max_tokens: Optional[int] = None
+    logprobs: Optional[int] = None
 
 
 class StopReason(Enum):
