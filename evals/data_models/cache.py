@@ -1,11 +1,15 @@
-from typing import Optional, List
-from pydantic import BaseModel
+import pydantic
 
-from evals.data_models.inference import LLMParams, LLMResponse
-from evals.data_models.messages import Prompt
+from .inference import LLMParams, LLMResponse, TaggedModeration
+from .messages import Prompt
 
 
-class LLMCache(BaseModel):
+class LLMCache(pydantic.BaseModel):
     params: LLMParams
     prompt: Prompt
-    responses: Optional[List[LLMResponse]] = None
+    responses: list[LLMResponse] | None = None
+
+
+class LLMCacheModeration(pydantic.BaseModel):
+    texts: list[str]
+    moderation: list[TaggedModeration] | None = None

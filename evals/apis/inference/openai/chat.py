@@ -1,15 +1,19 @@
+import collections
 import logging
+import os
 import time
 
 import openai
+import openai.types
+import openai.types.chat
 import requests
-from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from evals.data_models.inference import LLMResponse
-from evals.apis.inference.openai.base import OpenAIModel
-from evals.apis.inference.openai.utils import count_tokens, price_per_token, GPT_CHAT_MODELS
-from evals.data_models.messages import Prompt
+from evals.data_models import LLMResponse, Prompt
+from evals import math_utils
+
+from .base import OpenAIModel
+from .utils import GPT_CHAT_MODELS, get_rate_limit, price_per_token
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,9 +27,10 @@ class OpenAIChatModel(OpenAIModel):
     @retry(stop=stop_after_attempt(8), wait=wait_fixed(2))
     async def _get_dummy_response_header(self, model_id: str):
         url = "https://api.openai.com/v1/chat/completions"
+        api_key = os.environ["OPENAI_API_KEY"]
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {openai.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "OpenAI-Organization": self.organization,
         }
         data = {
@@ -34,7 +39,15 @@ class OpenAIChatModel(OpenAIModel):
         }
         response = requests.post(url, headers=headers, json=data)
         if "x-ratelimit-limit-tokens" not in response.headers:
-            raise RuntimeError("Failed to get dummy response header")
+            tpm, rpm = get_rate_limit(model_id)
+            print(f"Failed to get dummy response header {model_id}, setting to tpm, rpm: {tpm}, {rpm}")
+            header_dict = dict(response.headers)
+            return header_dict | {
+                "x-ratelimit-limit-tokens": str(tpm),
+                "x-ratelimit-limit-requests": str(rpm),
+                "x-ratelimit-remaining-tokens": str(tpm),
+                "x-ratelimit-remaining-requests": str(rpm),
+            }
         return response.headers
 
     @staticmethod
@@ -55,30 +68,34 @@ class OpenAIChatModel(OpenAIModel):
 
     @staticmethod
     def convert_top_logprobs(data):
-        # Initialize the new structure with only top_logprobs
+        # convert OpenAI chat version of logprobs response to completion version
         top_logprobs = []
 
-        for item in data["content"]:
-            # Prepare a dictionary for top_logprobs
-            top_logprob_dict = {}
-            for top_logprob in item["top_logprobs"]:
-                top_logprob_dict[top_logprob["token"]] = top_logprob["logprob"]
+        for item in data.content:
+            # <|end|> is known to be duplicated on gpt-4-turbo-2024-04-09
+            # See experiments/sample-notebooks/api-tests/logprob-dup-tokens.ipynb for details
+            possibly_duplicated_top_logprobs = collections.defaultdict(list)
+            for top_logprob in item.top_logprobs:
+                possibly_duplicated_top_logprobs[top_logprob.token].append(top_logprob.logprob)
 
-            top_logprobs.append(top_logprob_dict)
+            top_logprobs.append({k: math_utils.logsumexp(vs) for k, vs in possibly_duplicated_top_logprobs.items()})
 
         return top_logprobs
 
     async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
 
+        # convert completion logprobs api to chat logprobs api
         if "logprobs" in params:
             params["top_logprobs"] = params["logprobs"]
             params["logprobs"] = True
 
-        prompt_file = self.create_prompt_history_file(prompt.openai_format(), model_id, self.prompt_history_dir)
+        prompt_file = self.create_prompt_history_file(prompt, model_id, self.prompt_history_dir)
         api_start = time.time()
-        api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
-            messages=prompt.openai_format(), model=model_id, organization=self.organization, **params
+        api_response: openai.types.chat.ChatCompletion = await self.aclient.chat.completions.create(
+            messages=prompt.openai_format(),
+            model=model_id,
+            **params,
         )
         api_duration = time.time() - api_start
         duration = time.time() - start_time
@@ -91,10 +108,26 @@ class OpenAIChatModel(OpenAIModel):
                 stop_reason=choice.finish_reason,
                 api_duration=api_duration,
                 duration=duration,
-                cost=context_cost + count_tokens(choice.message.content) * completion_token_cost,
-                logprobs=self.convert_top_logprobs(choice.logprobs) if choice.logprobs is not None else None,
+                cost=context_cost + self.count_tokens(choice.message.content) * completion_token_cost,
+                logprobs=(self.convert_top_logprobs(choice.logprobs) if choice.logprobs is not None else None),
             )
             for choice in api_response.choices
         ]
         self.add_response_to_prompt_file(prompt_file, responses)
         return responses
+
+    async def make_stream_api_call(
+        self,
+        prompt: Prompt,
+        model_id,
+        **params,
+    ) -> openai.AsyncStream[openai.types.chat.ChatCompletionChunk]:
+        # TODO(tony): Can eventually wrap this in an async generator and keep
+        #             track of cost. Will need to do this in the parent API
+        #             class.
+        return await self.aclient.chat.completions.create(
+            messages=prompt.openai_format(),
+            model=model_id,
+            stream=True,
+            **params,
+        )

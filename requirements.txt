@@ -1,19 +1,30 @@
-# core
-anthropic
-datasets
+# OpenAI
+openai==1.26.0
+tiktoken==0.6.0
+
+# Anthropic
+anthropic==0.25.8
+
+# HuggingFace
+datasets==2.19.0
+transformers==4.40.0
+
+# API helpers
+pydantic==2.7.0
+tenacity==8.2.3
+
 fire
 hydra-core
-openai==0.28.0
 pandas
-pydantic
-tenacity
 termcolor
-tiktoken
 tqdm
 wandb
+scipy==1.13.0
+scikit-learn==1.4.2
 
 # notebooks
 jupyterlab
+ipykernel
 seaborn
 matplotlib
 
@@ -22,4 +33,3 @@ pre-commit
 black
 isort
 ruff
-shed
