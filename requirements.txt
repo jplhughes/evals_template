@@ -1,3 +1,6 @@
+# We use python 3.11.7
+# We pin top-level dependencies only to make cross-platform development easier.
+
 # OpenAI
 openai==1.26.0
 tiktoken==0.6.0
@@ -5,31 +8,75 @@ tiktoken==0.6.0
 # Anthropic
 anthropic==0.25.8
 
+# PyTorch
+# --extra-index-url https://download.pytorch.org/whl/cpu
+# torch==2.2.2+cpu
+# torchvision==0.17.2
+
 # HuggingFace
 datasets==2.19.0
 transformers==4.40.0
+
+# Streamlit
+streamlit==1.33.0
+streamlit-extras==0.4.2
 
 # API helpers
 pydantic==2.7.0
 tenacity==8.2.3
 
-fire
-hydra-core
-pandas
-termcolor
-tqdm
-wandb
+# Data processing
+datamodel-code-generator==0.25.5
+genson==1.2.2
+jsonlines==4.0.0
+lark==1.1.9
+
+# Prompt engineering
+Jinja2==3.1.3
+
+# Deep learning helpers
+einops==0.7.0
+einop==0.0.1
+
+# Computational libraries
+dask[dataframe]==2024.4.1
+pandas==2.2.2
+pyarrow==15.0.2
 scipy==1.13.0
 scikit-learn==1.4.2
+statsmodels==0.14.2
+umap-learn[plot]==0.5.6
 
-# notebooks
-jupyterlab
+# Visualization libraries
+dash==2.16.1
+matplotlib==3.8.4
+plotly==5.21.0
+seaborn==0.13.2
+
+# Experiment management
+simple-parsing==0.1.5
+wandb==0.16.6
+
+# Runpod things
+# fabric==3.2.2
+# runpod==1.6.2
+
+# Testing
+pytest==8.1.1
+pytest-asyncio==0.23.6  # for async tests
+pytest-xdist==3.5.0  # for parallel testing
+
+# Misc utilities
+termcolor==2.4.0
+tqdm==4.66.2
 ipykernel
-seaborn
-matplotlib
 
-# dev
-pre-commit
-black
-isort
-ruff
+# Formatting, Linting, and Typechecking
+pre-commit==3.7.0
+ruff==0.4.1  # If you upgrade this, also update the GitHub Actions workflow and the pre-commit config
+
+# Other utilities
+gpustat==1.1.1
+ipywidgets==8.1.2
+jupyterlab==4.1.6
+magic-wormhole==0.14.0
