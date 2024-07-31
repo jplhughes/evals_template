@@ -1,18 +1,13 @@
+import dataclasses
 import logging
+import os
 
-import openai
 import requests
+import simple_parsing
 
-from evals.utils import setup_environment
+from evals.utils import setup_environment, load_secrets
 
 logger = logging.getLogger(__name__)
-
-
-_org_ids = {
-    "NYU": "org-rRALD2hkdlmLWNVCKk9PG5Xq",
-    "FAR": "org-AFgHGbU3MeFr5M5QFwrBET31",
-    "ARG": "org-4L2GWAH28buzKOIhEAb3L5aq",
-}
 
 
 def extract_usage(response):
@@ -28,9 +23,10 @@ def extract_usage(response):
 
 def get_ratelimit_usage(data, org_id, endpoint):
     try:
+        api_key = os.environ["OPENAI_API_KEY"]
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {openai.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "OpenAI-Organization": org_id,
         }
         response = requests.post(
@@ -59,29 +55,35 @@ def fetch_ratelimit_usage_base(org_id, model_name) -> float:
     return get_ratelimit_usage(data, org_id, "https://api.openai.com/v1/completions")
 
 
-def get_current_openai_model_usage() -> None:
-    models_to_check = [
-        "gpt-3.5-turbo-instruct",
-        "gpt-4-1106-preview",
-        "gpt-4-base",
-    ]
-    org_names = ["NYU", "FAR", "ARG"]
-    result_str = "\nModel usage: 1 is hitting rate limits, 0 is not in use. -1 is error.\n"
-    for org in org_names:
-        result_str += f"\n{org}:\n"
-        for model_name in models_to_check:
-            if model_name == "gpt-4-base" or model_name == "gpt-3.5-turbo-instruct":
-                if org == "ARG":
-                    usage = fetch_ratelimit_usage_base(_org_ids[org], model_name)
-                else:
-                    continue
-            else:
-                usage = fetch_ratelimit_usage(_org_ids[org], model_name)
-            result_str += f"\t{model_name}:\t{usage:.2f}\n"
-        result_str += "\n"
-    print(result_str)
+def get_current_openai_model_usage(models, organizations) -> None:
+    secrets = load_secrets("SECRETS")
+    print("\nModel usage: 1 is hitting rate limits, 0 is not in use. -1 is error.\n")
+    for organization in organizations:
+        print(f"{organization}:")
+        org_id = secrets[organization]
+        for model_name in models:
+            usage = fetch_ratelimit_usage(org_id, model_name)
+            print(f"\t{model_name}:\t{usage:.2f}")
+        print()
+
+
+@dataclasses.dataclass
+class Config:
+    models: list[str] = dataclasses.field(
+        default_factory=lambda: [
+            "gpt-3.5-turbo-0125",
+            "gpt-3.5-turbo-1106",
+            "gpt-4-1106-preview",
+        ]
+    )
+    organizations: list[str] = dataclasses.field(default_factory=lambda: ["ACEDEMICNYUPEREZ_ORG", "FARAI_ORG"])
 
 
 if __name__ == "__main__":
+    parser = simple_parsing.ArgumentParser()
+    parser.add_arguments(Config, dest="experiment_config")
+    args = parser.parse_args()
+    cfg: Config = args.experiment_config
+
     setup_environment()
-    get_current_openai_model_usage()
+    get_current_openai_model_usage(cfg.models, cfg.organizations)

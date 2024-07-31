@@ -6,9 +6,13 @@ from pathlib import Path
 from traceback import format_exc
 from typing import Optional
 
-from evals.apis.inference.openai.utils import COMPLETION_MODELS, price_per_token
-from evals.apis.inference.model import InferenceAPIModel
-from evals.data_models.inference import LLMResponse
+import openai
+import tiktoken
+
+from evals.data_models import LLMResponse
+
+from ..model import InferenceAPIModel
+from .utils import COMPLETION_MODELS, price_per_token
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,10 +67,12 @@ class OpenAIModel(InferenceAPIModel):
         self.prompt_history_dir = prompt_history_dir
         self.model_ids = set()
 
+        self.aclient = openai.AsyncClient(organization=self.organization)
         self.token_capacity = dict()
         self.request_capacity = dict()
         self.lock_add = asyncio.Lock()
         self.lock_consume = asyncio.Lock()
+        self.tokenizer = tiktoken.get_encoding("cl100k_base")
 
     @staticmethod
     def _assert_valid_id(model_id: str):
@@ -86,6 +92,9 @@ class OpenAIModel(InferenceAPIModel):
     @staticmethod
     def _print_prompt_and_response(prompt, responses):
         raise NotImplementedError
+
+    def count_tokens(self, text: str) -> int:
+        return len(self.tokenizer.encode(text))
 
     async def add_model_id(self, model_id: str):
         self._assert_valid_id(model_id)
@@ -117,10 +126,11 @@ class OpenAIModel(InferenceAPIModel):
 
     async def __call__(
         self,
-        model_ids: list[str],
+        model_ids: tuple[str, ...],
         prompt,
         print_prompt_and_response: bool,
         max_attempts: int,
+        is_valid=lambda x: True,
         **kwargs,
     ) -> list[LLMResponse]:
         start = time.time()
@@ -140,9 +150,14 @@ class OpenAIModel(InferenceAPIModel):
                         continue  # Skip this iteration if the condition isn't met
 
                 # Make the API call outside the lock
-                return await asyncio.wait_for(self._make_api_call(prompt, model_id, start, **kwargs), timeout=120)
+                return await asyncio.wait_for(
+                    self._make_api_call(prompt, model_id, start, **kwargs),
+                    timeout=90,
+                )
 
-        model_ids.sort(key=lambda model_id: price_per_token(model_id)[0])  # Default to cheapest model
+        model_ids = tuple(
+            sorted(model_ids, key=lambda model_id: price_per_token(model_id))
+        )  # Default to cheapest model
         async with self.lock_add:
             for model_id in model_ids:
                 await self.add_model_id(model_id)
@@ -154,6 +169,8 @@ class OpenAIModel(InferenceAPIModel):
         for i in range(max_attempts):
             try:
                 responses = await attempt_api_call()
+                if responses is not None and not all(is_valid(response.completion) for response in responses):
+                    raise RuntimeError(f"Invalid responses according to is_valid {responses}")
             except Exception as e:
                 error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()}"
                 LOGGER.warn(f"Encountered API error: {error_info}.\nRetrying now. (Attempt {i})")

@@ -10,9 +10,9 @@ from evals.utils import setup_environment
 def can_claude_api_take_n_more_concurrents(n: int) -> bool:
     def ping_claude__is_ratelimited() -> Optional[bool]:
         data = {
-            "model": "claude-2.0",
-            "prompt": "\n\nHuman: Count to 50.\n\nAssistant:",
-            "max_tokens_to_sample": 1000,
+            "model": "claude-3-opus-20240229",
+            "max_tokens": 1000,
+            "messages": [{"role": "user", "content": "Hello, world"}],
         }
         headers = {
             "content-type": "application/json",
@@ -21,7 +21,7 @@ def can_claude_api_take_n_more_concurrents(n: int) -> bool:
             "x-api-key": f"{os.getenv('ANTHROPIC_API_KEY')}",
         }
         response = requests.post(
-            "https://api.anthropic.com/v1/complete",
+            "https://api.anthropic.com/v1/messages",
             headers=headers,
             json=data,
             timeout=20,
@@ -47,9 +47,11 @@ def can_claude_api_take_n_more_concurrents(n: int) -> bool:
     return result
 
 
-def binary_search_for_max_concurrent_claude_requests() -> int:
+def binary_search_for_max_concurrent_claude_requests(
+    dry_run: bool = False,
+) -> int:
     min_max_new_concurrent_requests = 1
-    max_max_new_concurrent_requests = 100
+    max_max_new_concurrent_requests = 100 if not dry_run else 20
     while (
         min_max_new_concurrent_requests + 5 < max_max_new_concurrent_requests
     ):  # plus five because we don't need it accurate
@@ -58,6 +60,8 @@ def binary_search_for_max_concurrent_claude_requests() -> int:
             min_max_new_concurrent_requests = mid_test_number
         else:
             max_max_new_concurrent_requests = mid_test_number
+        if dry_run:
+            break
     print(
         f"\n\nFinal result: Claude can currently take roughly {min_max_new_concurrent_requests} more concurrent requests.\n"
     )

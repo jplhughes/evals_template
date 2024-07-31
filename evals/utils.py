@@ -1,8 +1,9 @@
 import json
 import logging
 import os
+from pathlib import Path
+import git
 
-import openai
 import yaml
 from tenacity import retry, retry_if_result, stop_after_attempt
 
@@ -17,15 +18,32 @@ LOGGING_LEVELS = {
 }
 
 
+def get_repo_root() -> Path:
+    """Returns repo root (relative to this file)."""
+    return Path(
+        git.Repo(
+            __file__,
+            search_parent_directories=True,
+        ).git.rev_parse("--show-toplevel")
+    )
+
+
 def setup_environment(
     anthropic_tag: str = "ANTHROPIC_API_KEY",
     logging_level: str = "info",
     openai_tag: str = "OPENAI_API_KEY",
+    organization_tag: str = "ACEDEMICNYUPEREZ_ORG",
 ):
     setup_logging(logging_level)
     secrets = load_secrets("SECRETS")
-    openai.api_key = secrets[openai_tag]
+    os.environ["OPENAI_API_KEY"] = secrets[openai_tag]
+    os.environ["OPENAI_ORG_ID"] = secrets[organization_tag]
     os.environ["ANTHROPIC_API_KEY"] = secrets[anthropic_tag]
+    if "RUNPOD_API_KEY" in secrets:
+        os.environ["RUNPOD_API_KEY"] = secrets["RUNPOD_API_KEY"]
+    if "HF_API_KEY" in secrets:
+        # https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables
+        os.environ["HF_TOKEN"] = secrets["HF_API_KEY"]
 
 
 def setup_logging(logging_level):
